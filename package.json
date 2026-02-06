@@ -1,0 +1,20 @@
+{
+    "name": "komida-backend",
+    "module": "src/index.ts",
+    "type": "module",
+    "scripts": {
+        "dev": "bun run --watch src/index.ts",
+        "test": "bun test"
+    },
+    "dependencies": {
+        "cheerio": "^1.2.0",
+        "hono": "^4.0.0",
+        "puppeteer": "^24.36.1",
+        "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2",
+        "sharp": "^0.34.5"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
+}
