@@ -2,6 +2,7 @@ import { db } from '../db';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
 import { ShinigamiBrowserScraper } from '../scrapers/providers/shinigami-browser';
+import { SoftkomikScraper } from '../scrapers/providers/softkomik';
 import type { ScrapedManga, ScraperProvider } from '../scrapers/types';
 
 export class MangaService {
@@ -12,6 +13,7 @@ export class MangaService {
             new KiryuuScraper(),
             new ManhwaIndoScraper(),
             new ShinigamiBrowserScraper(),
+            new SoftkomikScraper(),
         ];
     }
 
@@ -119,13 +121,48 @@ export class MangaService {
         // e.g. "virus-girlfriend" -> "%Virus%Girlfriend%"
         const titlePart = slug.split('-').join('%');
 
-        const rows = db.query(`
+        let rows = db.query(`
             SELECT * FROM manga 
             WHERE title LIKE $title OR link LIKE $slug
         `).all({
             $title: `%${titlePart}%`,
             $slug: `%${slug}%`
         }) as any[];
+
+        // Fallback: If not found in DB, try to scrape directly from Kiryuu (primary source)
+        if (rows.length === 0) {
+            console.log(`[LazyLoad] Manga not found in DB for slug: ${slug}. Attempting direct scrape...`);
+            // Guess the URL based on slug
+            const guessedLink = `https://kiryuu03.com/manga/${slug}/`;
+            const scraper = this.scrapers.find(s => s.name === 'Kiryuu');
+
+            if (scraper) {
+                const detail = await scraper.scrapeDetail(guessedLink);
+                if (detail) {
+                    // Save to DB so it can be found next time
+                    db.prepare(`
+                        INSERT INTO manga (title, image, chapter, previous_chapter, link, source, is_trending, last_updated, genres, synopsis, rating, status, author, chapters)
+                        VALUES ($title, $image, $chapter, $previous_chapter, $link, $source, 0, CURRENT_TIMESTAMP, $genres, $synopsis, $rating, $status, $author, $chapters)
+                    `).run({
+                        $title: detail.title,
+                        $image: detail.image,
+                        $chapter: detail.chapters[0]?.title || 'Unknown',
+                        $previous_chapter: detail.chapters[1]?.title || null,
+                        $link: guessedLink,
+                        $source: 'Kiryuu',
+                        $genres: JSON.stringify(detail.genres),
+                        $synopsis: detail.synopsis,
+                        $rating: detail.rating,
+                        $status: detail.status,
+                        $author: detail.author,
+                        $chapters: JSON.stringify(detail.chapters)
+                    } as any);
+
+                    // Re-query to get the inserted row with ID
+                    rows = db.query(`SELECT * FROM manga WHERE link = $link`).all({ $link: guessedLink }) as any[];
+                }
+            }
+        }
 
         if (rows.length === 0) return null;
 
@@ -175,6 +212,24 @@ export class MangaService {
             return null;
         }
         return await scraper.scrapeChapter(link);
+    }
+
+    async getGenres() {
+        // Prefer Kiryuu for genres validation/list
+        const scraper = this.scrapers.find(s => s.name === 'Kiryuu');
+        if (scraper && scraper.scrapeGenres) {
+            return await scraper.scrapeGenres();
+        }
+        return [];
+    }
+
+    async getMangaByGenre(genre: string, page: number = 1) {
+        // Use Kiryuu for genre filtering for now
+        const scraper = this.scrapers.find(s => s.name === 'Kiryuu');
+        if (scraper && scraper.scrapeByGenre) {
+            return await scraper.scrapeByGenre(genre, page);
+        }
+        return [];
     }
 }
 

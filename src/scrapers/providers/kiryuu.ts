@@ -286,4 +286,134 @@ export class KiryuuScraper implements ScraperProvider {
             return null;
         }
     }
+
+    async scrapeGenres(): Promise<{ name: string; slug: string }[]> {
+        // Hardcoded list from Kiryuu to avoid extra request
+        return [
+            { name: "Action", slug: "action" },
+            { name: "Adventure", slug: "adventure" },
+            { name: "Comedy", slug: "comedy" },
+            { name: "Crime", slug: "crime" },
+            { name: "Drama", slug: "drama" },
+            { name: "Fantasy", slug: "fantasy" },
+            { name: "Harem", slug: "harem" },
+            { name: "Historical", slug: "historical" },
+            { name: "Horror", slug: "horror" },
+            { name: "Isekai", slug: "isekai" },
+            { name: "Josei", slug: "josei" },
+            { name: "Magic", slug: "magic" },
+            { name: "Martial Arts", slug: "martial-arts" },
+            { name: "Mature", slug: "mature" },
+            { name: "Mecha", slug: "mecha" },
+            { name: "Mystery", slug: "mystery" },
+            { name: "Psychological", slug: "psychological" },
+            { name: "Romance", slug: "romance" },
+            { name: "School Life", slug: "school-life" },
+            { name: "Sci-Fi", slug: "sci-fi" },
+            { name: "Seinen", slug: "seinen" },
+            { name: "Shoujo", slug: "shoujo" },
+            { name: "Shoujo Ai", slug: "shoujo-ai" },
+            { name: "Shounen", slug: "shounen" },
+            { name: "Shounen Ai", slug: "shounen-ai" },
+            { name: "Slice of Life", slug: "slice-of-life" },
+            { name: "Sports", slug: "sports" },
+            { name: "Supernatural", slug: "supernatural" },
+            { name: "Thriller", slug: "thriller" },
+            { name: "Tragedy", slug: "tragedy" },
+            { name: "Yaoi", slug: "yaoi" },
+            { name: "Yuri", slug: "yuri" }
+        ];
+    }
+
+    async scrapeByGenre(genre: string, page: number = 1): Promise<ScrapedManga[]> {
+        try {
+            // Step 1: Get Genre ID from slug
+            // Endpoint: wp-json/wp/v2/genre?slug={slug}
+            const genreId = await this.getGenreId(genre);
+
+            if (!genreId) {
+                console.warn(`Genre ID not found for slug: ${genre}`);
+                return [];
+            }
+
+            // Step 2: Fetch Manga by Genre ID
+            // Endpoint: wp-json/wp/v2/manga?genre={id}&page={page}&_embed
+            const url = `${this.baseUrl}wp-json/wp/v2/manga?genre=${genreId}&page=${page}&_embed`;
+            console.log(`Fetching genre via API: ${url}`);
+
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': this.baseUrl
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 400) { // e.g., page out of range
+                    return [];
+                }
+                throw new Error(`Failed to fetch genre API: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (!Array.isArray(data)) {
+                return [];
+            }
+
+            return data.map((item: any) => {
+                const title = this.decodeHtmlEntities(item.title?.rendered || 'Unknown Title');
+                const link = item.link;
+                let image = '';
+
+                if (item._embedded && item._embedded['wp:featuredmedia'] && item._embedded['wp:featuredmedia'][0]) {
+                    image = item._embedded['wp:featuredmedia'][0].source_url;
+                }
+
+                return {
+                    title,
+                    image,
+                    source: this.name,
+                    chapter: 'Read Now', // API doesn't expose latest chapter easily
+                    previous_chapter: '',
+                    link,
+                    rating: 0 // API doesn't expose rating easily
+                };
+            });
+
+        } catch (error) {
+            console.error(`Error scraping genre ${genre}:`, error);
+            return [];
+        }
+    }
+
+    private async getGenreId(slug: string): Promise<number | null> {
+        try {
+            const url = `${this.baseUrl}wp-json/wp/v2/genre?slug=${slug}`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0'
+                }
+            });
+            if (!response.ok) return null;
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+                return data[0].id;
+            }
+            return null;
+        } catch (error) {
+            console.error(`Error fetching genre ID for ${slug}:`, error);
+            return null;
+        }
+    }
+
+    private decodeHtmlEntities(text: string): string {
+        return text.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#039;/g, "'")
+            .replace(/&rsquo;/g, "'");
+    }
 }

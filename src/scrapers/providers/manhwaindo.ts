@@ -3,7 +3,17 @@ import { MangaSource, type ScrapedManga, type ScraperProvider, type MangaDetail,
 
 export class ManhwaIndoScraper implements ScraperProvider {
     name = MangaSource.MANHWAINDO;
-    private readonly baseUrl = 'https://www.manhwaindo.my/';
+
+    private formatIndonesianDate(dateStr: string): string {
+        const months: { [key: string]: string } = {
+            'Januari': 'January', 'Februari': 'February', 'Maret': 'March',
+            'April': 'April', 'Mei': 'May', 'Juni': 'June',
+            'Juli': 'July', 'Agustus': 'August', 'September': 'September',
+            'Oktober': 'October', 'November': 'November', 'Desember': 'December',
+            'Agust': 'August', 'Okt': 'October', 'Nov': 'November', 'Des': 'December'
+        };
+        return dateStr.replace(/\b(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|Agust|Okt|Nov|Des)\b/g, (match) => months[match]);
+    }
 
     async scrapePopular(): Promise<ScrapedManga[]> {
         try {
@@ -77,9 +87,18 @@ export class ManhwaIndoScraper implements ScraperProvider {
             const chapters: MangaChapter[] = [];
             $('.series-chapterlist li, #chapterlist li').each((_, element) => {
                 const linkEl = $(element).find('a');
-                const chapTitle = linkEl.find('.chapter-name').text().trim() || linkEl.text().trim();
+                // Use .chapternum or fallback to text excluding .chapterdate
+                let chapTitle = linkEl.find('.chapternum').text().trim() || linkEl.find('.chapter-name').text().trim();
+
+                if (!chapTitle) {
+                    // Fallback to text but try to remove date
+                    const clone = linkEl.clone();
+                    clone.find('.chapterdate, .chapter-date').remove();
+                    chapTitle = clone.text().trim();
+                }
+
                 const chapLink = linkEl.attr('href') || '';
-                const released = $(element).find('.chapter-date').text().trim();
+                const released = linkEl.find('.chapterdate').text().trim() || linkEl.find('.chapter-date').text().trim() || $(element).find('.chapter-date').text().trim();
 
                 if (chapTitle && chapLink) {
                     chapters.push({

@@ -30,6 +30,10 @@ export function initDB() {
   try { db.run("ALTER TABLE manga ADD COLUMN link TEXT"); } catch { }
   try { db.run("ALTER TABLE manga ADD COLUMN source TEXT"); } catch { }
   try { db.run("ALTER TABLE manga ADD COLUMN chapters TEXT"); } catch { }
+  try { db.run("ALTER TABLE manga ADD COLUMN genres TEXT"); } catch { }
+  try { db.run("ALTER TABLE manga ADD COLUMN synopsis TEXT"); } catch { }
+  try { db.run("ALTER TABLE manga ADD COLUMN status TEXT"); } catch { }
+  try { db.run("ALTER TABLE manga ADD COLUMN author TEXT"); } catch { }
   // Note: SQLite columns have flexible typing, so existing INTEGER chapters can hold TEXT.
 
   console.log('Database initialized at:', dbPath);

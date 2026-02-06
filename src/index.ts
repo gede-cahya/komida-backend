@@ -9,6 +9,132 @@ app.use('*', logger())
 app.use('*', cors())
 
 import { mangaService } from './service/mangaService';
+import { userService } from './service/userService';
+import { createToken, verifyToken } from './utils/auth';
+import { commentService } from './service/commentService';
+
+// Auth Routes
+app.post('/api/auth/register', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { username, password, role } = body;
+
+        if (!username || !password) {
+            return c.json({ error: 'Username and password are required' }, 400);
+        }
+
+        const user = await userService.createUser(username, password, role);
+        const token = await createToken({ id: user.id, username: user.username, role: user.role });
+
+        return c.json({ user, token });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
+app.post('/api/auth/login', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { username, password } = body;
+
+        const user = await userService.getUserByUsername(username);
+        if (!user || !(await userService.verifyPassword(password, user.password))) {
+            return c.json({ error: 'Invalid credentials' }, 401);
+        }
+
+        const token = await createToken({ id: user.id, username: user.username, role: user.role });
+
+        // Remove password from response
+        const { password: _, ...userWithoutPass } = user;
+        return c.json({ user: userWithoutPass, token });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// Admin Middleware
+app.use('/api/admin/*', async (c, next) => {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const payload = await verifyToken(token);
+
+    if (!payload || payload.role !== 'admin') {
+        return c.json({ error: 'Forbidden: Admins only' }, 403);
+    }
+
+    // c.set('user', payload); 
+    await next();
+});
+
+// Comment Routes
+app.get('/api/comments', async (c) => {
+    const slug = c.req.query('slug');
+    const chapter = c.req.query('chapter');
+
+    if (!slug) {
+        return c.json({ error: 'Slug is required' }, 400);
+    }
+
+    try {
+        const comments = await commentService.getComments(slug, chapter);
+        return c.json({ comments });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/comments', async (c) => {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const payload = await verifyToken(token);
+
+    if (!payload) {
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    try {
+        const body = await c.req.json();
+        const { slug, chapter, content } = body;
+
+        if (!slug || !content) {
+            return c.json({ error: 'Slug and content are required' }, 400);
+        }
+
+        const comment = await commentService.createComment(payload.id, slug, content, chapter);
+
+        // Return with username for immediate display
+        return c.json({
+            comment: {
+                ...comment,
+                username: payload.username,
+                role: payload.role
+            }
+        });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// Admin Dashboard Data
+app.get('/api/admin/dashboard', (c) => {
+    return c.json({
+        message: 'Welcome to Admin Dashboard',
+        stats: {
+            users: 1, // Dummy
+            manga: 100, // Dummy
+            serverUptime: process.uptime()
+        }
+    });
+});
+
 
 // SQL Queries
 const getTrending = db.query('SELECT * FROM manga WHERE is_trending = 1');
@@ -57,6 +183,18 @@ app.get('/api/popular', async (c) => {
 
     return c.json(popular)
 })
+
+app.get('/api/genres', async (c) => {
+    const genres = await mangaService.getGenres();
+    return c.json(genres);
+});
+
+app.get('/api/genres/:genre', async (c) => {
+    const genre = c.req.param('genre');
+    const page = parseInt(c.req.query('page') || '1');
+    const manga = await mangaService.getMangaByGenre(genre, page);
+    return c.json(manga);
+});
 
 app.get('/api/manga/detail', async (c) => {
     const source = c.req.query('source');
@@ -128,10 +266,8 @@ app.get('/api/manga/chapter', async (c) => {
         return c.json({ images: [] });
     }
 
-    // Proxy the images for compression and reliability
-    const proxiedImages = chapterData.images.map((img: string) =>
-        `${new URL(c.req.url).origin}/api/image/proxy?url=${encodeURIComponent(img)}`
-    );
+    // Return raw images, let frontend handle proxying
+    const proxiedImages = chapterData.images;
 
     // Encrypt Next/Prev as IDs
     const nextId = chapterData.next ? encryptData({ source, link: chapterData.next }) : undefined;
@@ -192,7 +328,9 @@ app.get('/api/image/proxy', async (c) => {
     try {
         const response = await fetch(url, {
             headers: {
-                'Referer': 'https://kiryuu03.com/', // Default to Kiryuu, or extract from URL
+                'Referer': url.includes('softkomik') || url.includes('softdevices')
+                    ? 'https://softkomik.com/'
+                    : 'https://kiryuu03.com/',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });

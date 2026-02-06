@@ -2,6 +2,7 @@ export enum MangaSource {
     KIRYUU = 'Kiryuu',
     MANHWAINDO = 'ManhwaIndo',
     SHINIGAMI = 'Shinigami',
+    SOFTKOMIK = 'Softkomik',
 }
 
 export interface ScrapedManga {
@@ -39,8 +40,10 @@ export interface ChapterData {
 
 export interface ScraperProvider {
     name: MangaSource;
-    scrapePopular(): Promise<ScrapedManga[]>;
+    scrapePopular(page?: number): Promise<ScrapedManga[]>;
     scrapeDetail(link: string): Promise<MangaDetail | null>;
     scrapeChapter(link: string): Promise<ChapterData | null>;
+    scrapeGenres?(): Promise<{ name: string; slug: string }[]>;
+    scrapeByGenre?(genre: string, page?: number): Promise<ScrapedManga[]>;
 }
 
