@@ -12,6 +12,22 @@ import { mangaService } from './service/mangaService';
 import { userService } from './service/userService';
 import { createToken, verifyToken } from './utils/auth';
 import { commentService } from './service/commentService';
+import { AnalyticsService } from './service/analyticsService';
+
+const analyticsService = new AnalyticsService();
+
+// Analytics Middleware
+app.use('*', async (c, next) => {
+    // Track unique IPs as site visits
+    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+    const ua = c.req.header('user-agent') || 'unknown';
+
+    // Skip tracking for static files or favicon if any, but this is API server so it's fine.
+    // Also internal admin API calls might be excluded if desired, but let's track everything for now.
+    analyticsService.trackSiteVisit(ip, ua);
+
+    await next();
+});
 
 // Auth Routes
 app.post('/api/auth/register', async (c) => {
@@ -68,6 +84,112 @@ app.use('/api/admin/*', async (c, next) => {
 
     // c.set('user', payload); 
     await next();
+});
+
+import { adminService } from './service/adminService';
+
+// --- Admin User Management ---
+
+app.get('/api/admin/users', async (c) => {
+    const page = Number(c.req.query('page')) || 1;
+    const limit = Number(c.req.query('limit')) || 20;
+    const search = c.req.query('search') || '';
+
+    try {
+        const result = await adminService.getAllUsers(page, limit, search);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/users', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { username, password, role } = body;
+        if (!username || !password) return c.json({ error: 'Username and password required' }, 400);
+
+        const user = await userService.createUser(username, password, role);
+        return c.json(user);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
+app.put('/api/admin/users/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const user = await adminService.updateUser(id, body);
+        if (!user) return c.json({ error: 'User not found or no changes' }, 404);
+        return c.json(user);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/users/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteUser(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Admin Manga Management ---
+
+app.get('/api/admin/manga', async (c) => {
+    const page = Number(c.req.query('page')) || 1;
+    const limit = Number(c.req.query('limit')) || 20;
+    const search = c.req.query('search') || '';
+
+    try {
+        const result = await adminService.getAllManga(page, limit, search);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/manga/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteManga(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/manga/search', async (c) => {
+    try {
+        const body = await c.req.json();
+        console.log('[API] Search request:', body);
+        const { query, source } = body;
+        if (!query) return c.json({ error: 'Query is required' }, 400);
+
+        const results = await adminService.searchExternalManga(query, source);
+        console.log(`[API] Found ${results.length} results`);
+        return c.json({ results });
+    } catch (e: any) {
+        console.error('[API] Search error:', e);
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/manga/import', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { source, link } = body;
+        if (!source || !link) return c.json({ error: 'Source and link are required' }, 400);
+
+        const result = await adminService.importManga(source, link);
+        return c.json({ success: true, manga: result });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
 });
 
 // Comment Routes
@@ -133,6 +255,37 @@ app.get('/api/admin/dashboard', (c) => {
             serverUptime: process.uptime()
         }
     });
+});
+
+// AnalyticsService used above
+
+app.get('/api/admin/stats/summary', async (c) => {
+    try {
+        const summary = analyticsService.getSummary();
+        return c.json(summary);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/admin/stats/visits', async (c) => {
+    const period = c.req.query('period') as 'day' | 'week' | 'month' || 'day';
+    try {
+        const visits = analyticsService.getSiteVisits(period);
+        return c.json(visits);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/admin/stats/popular', async (c) => {
+    const period = c.req.query('period') as 'day' | 'week' | 'month' || 'day';
+    try {
+        const popular = analyticsService.getTopManga(period);
+        return c.json(popular);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
 });
 
 
@@ -292,6 +445,10 @@ app.get('/api/manga/search', async (c) => {
 app.get('/api/manga/slug/:slug', async (c) => {
     try {
         const slug = c.req.param('slug');
+
+        // Track View
+        analyticsService.trackMangaView(slug);
+
         const data = await mangaService.getMangaBySlug(slug);
 
         if (!data) {
@@ -325,27 +482,65 @@ app.get('/api/image/proxy', async (c) => {
     const url = c.req.query('url');
     if (!url) return c.text('Missing url', 400);
 
+    const source = c.req.query('source');
+
+    // Determine Referer based on source or URL
+    let referer = 'https://kiryuu03.com/'; // Default
+    if (url.includes('softkomik') || url.includes('softdevices') || source === 'Softkomik') {
+        referer = 'https://softkomik.com/';
+    } else if (url.includes('manhwaindo') || source === 'ManhwaIndo') {
+        referer = 'https://www.manhwaindo.my/';
+    }
+
     try {
         const response = await fetch(url, {
             headers: {
-                'Referer': url.includes('softkomik') || url.includes('softdevices')
-                    ? 'https://softkomik.com/'
-                    : 'https://kiryuu03.com/',
+                'Referer': referer,
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
 
-        if (!response.ok) return c.text('Upstream error: ' + response.status, 502);
+        if (!response.ok) {
+            console.error(`[Proxy] Upstream error: ${response.status} for ${url}`);
+            return c.text('Upstream error: ' + response.status, 502);
+        }
+
+        const contentType = response.headers.get('content-type');
+        console.log(`[Proxy] Fetching: ${url}`);
+        console.log(`[Proxy] Status: ${response.status}, Content-Type: ${contentType}`);
 
         const arrayBuffer = await response.arrayBuffer();
-        const optimizedBuffer = await sharp(arrayBuffer)
-            .resize({ width: 800, withoutEnlargement: true })
-            .webp({ quality: 60 })
-            .toBuffer();
+        console.log(`[Proxy] Buffer size: ${arrayBuffer.byteLength} bytes`);
 
-        c.header('Content-Type', 'image/webp');
+        if (arrayBuffer.byteLength === 0) {
+            return c.text('Empty response from upstream', 502);
+        }
+
+        let outputBuffer: ArrayBuffer | Buffer = arrayBuffer;
+
+        // SKIP Sharp for AVIF or if buffer is already optimized
+        if (contentType && (contentType.includes('avif') || contentType.includes('gif'))) {
+            console.log(`[Proxy] Skipping Sharp for ${contentType}`);
+            c.header('Content-Type', contentType);
+            return c.body(outputBuffer as any);
+        }
+
+        try {
+            outputBuffer = await sharp(arrayBuffer)
+                .resize({ width: 800, withoutEnlargement: true })
+                .webp({ quality: 60 })
+                .toBuffer();
+
+            c.header('Content-Type', 'image/webp');
+        } catch (sharpError) {
+            console.warn(`[Proxy] Sharp optimization failed for ${url}, returning original. Error:`, sharpError);
+            // Fallback to original content type or default
+            c.header('Content-Type', contentType || 'application/octet-stream');
+            outputBuffer = arrayBuffer;
+        }
+
         c.header('Cache-Control', 'public, max-age=31536000');
-        return c.body(optimizedBuffer as any);
+        return c.body(outputBuffer as any);
 
     } catch (e: any) {
         console.error('Proxy Error:', e);

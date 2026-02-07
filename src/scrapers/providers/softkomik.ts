@@ -42,6 +42,91 @@ export class SoftkomikScraper implements ScraperProvider {
         return null;
     }
 
+    async search(query: string): Promise<ScrapedManga[]> {
+        try {
+            console.log(`Searching ${this.name} for "${query}"...`);
+            const url = `${this.baseUrl}?s=${encodeURIComponent(query)}`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+            if (!response.ok) throw new Error(`Failed to fetch search: ${response.status}`);
+
+            const html = await response.text();
+            const $ = cheerio.load(html);
+            const mangaList: ScrapedManga[] = [];
+
+            $('.item-komik').each((_, element) => {
+                // Find title: The first link that has text and is not a chapter link
+                const links = $(element).find('a');
+                let titleEl = links.first();
+                let title = '';
+
+                links.each((_, link) => {
+                    const t = $(link).text().trim();
+                    const href = $(link).attr('href') || '';
+                    const hasImg = $(link).find('img').length > 0;
+
+                    if (t && !hasImg && !href.includes('/chapter/') && !href.includes('/type/')) {
+                        title = t;
+                        titleEl = $(link);
+                        return false; // Break
+                    }
+                });
+
+                const link = titleEl.attr('href');
+                let imgEl = $(element).find('img').first();
+                let image = imgEl.attr('data-src') || imgEl.attr('src') || imgEl.attr('data-lazy-src') || '';
+
+                if (!image || image.startsWith('data:')) {
+                    const noScript = $(element).find('noscript').text();
+                    if (noScript) {
+                        const match = noScript.match(/src="([^"]+)"/);
+                        if (match) image = match[1];
+                    }
+                }
+
+                // Fallback: try to find image in the cover link
+                if (!image || image.startsWith('data:')) {
+                    const coverImg = $(element).find('a:first-child img').attr('src');
+                    if (coverImg && !coverImg.startsWith('data:')) image = coverImg;
+                }
+
+                if (image && !image.startsWith('http')) {
+                    if (image.startsWith('/_next/image')) {
+                        const match = image.match(/url=([^&]+)/);
+                        if (match) image = decodeURIComponent(match[1]);
+                        else image = `${this.baseUrl}${image}`;
+                    } else {
+                        image = `${this.baseUrl}${image.replace(/^\//, '')}`;
+                    }
+                }
+
+                let chapter = $(element).find('a[href*="/chapter/"]').last().text().trim();
+                if (!chapter) chapter = 'Unknown';
+
+                if (title && link) {
+                    const fullLink = link.startsWith('http') ? link : `${this.baseUrl.replace(/\/$/, '')}${link}`;
+
+                    mangaList.push({
+                        title: title.replace('Bahasa Indonesia', '').trim(),
+                        image,
+                        source: this.name,
+                        chapter,
+                        link: fullLink
+                    });
+                }
+            });
+
+            console.log(`Found ${mangaList.length} results from ${this.name}`);
+            return mangaList;
+        } catch (error) {
+            console.error(`Error searching ${this.name}:`, error);
+            return [];
+        }
+    }
+
     async scrapePopular(): Promise<ScrapedManga[]> {
         try {
             console.log(`Scraping ${this.name}...`);

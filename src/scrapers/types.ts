@@ -45,5 +45,6 @@ export interface ScraperProvider {
     scrapeChapter(link: string): Promise<ChapterData | null>;
     scrapeGenres?(): Promise<{ name: string; slug: string }[]>;
     scrapeByGenre?(genre: string, page?: number): Promise<ScrapedManga[]>;
+    search?(query: string): Promise<ScrapedManga[]>;
 }
 

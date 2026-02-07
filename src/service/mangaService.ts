@@ -1,3 +1,4 @@
+
 import { db } from '../db';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
@@ -139,25 +140,7 @@ export class MangaService {
             if (scraper) {
                 const detail = await scraper.scrapeDetail(guessedLink);
                 if (detail) {
-                    // Save to DB so it can be found next time
-                    db.prepare(`
-                        INSERT INTO manga (title, image, chapter, previous_chapter, link, source, is_trending, last_updated, genres, synopsis, rating, status, author, chapters)
-                        VALUES ($title, $image, $chapter, $previous_chapter, $link, $source, 0, CURRENT_TIMESTAMP, $genres, $synopsis, $rating, $status, $author, $chapters)
-                    `).run({
-                        $title: detail.title,
-                        $image: detail.image,
-                        $chapter: detail.chapters[0]?.title || 'Unknown',
-                        $previous_chapter: detail.chapters[1]?.title || null,
-                        $link: guessedLink,
-                        $source: 'Kiryuu',
-                        $genres: JSON.stringify(detail.genres),
-                        $synopsis: detail.synopsis,
-                        $rating: detail.rating,
-                        $status: detail.status,
-                        $author: detail.author,
-                        $chapters: JSON.stringify(detail.chapters)
-                    } as any);
-
+                    this.saveMangaToDb(detail, 'Kiryuu', guessedLink);
                     // Re-query to get the inserted row with ID
                     rows = db.query(`SELECT * FROM manga WHERE link = $link`).all({ $link: guessedLink }) as any[];
                 }
@@ -169,11 +152,19 @@ export class MangaService {
         // scrape details for each source if chapters are missing
         const sources = await Promise.all(rows.map(async (row) => {
             let chapters = JSON.parse(row.chapters || '[]');
-            // If no chapters cached, try to scrape specific detail
-            if (chapters.length === 0) {
+
+            // Check if chapters data looks corrupted (empty released field, or title contains date pattern)
+            const looksCorrupted = chapters.length > 0 && chapters.some((ch: any) =>
+                !ch.released ||
+                ch.released === '' ||
+                /\d{1,2}\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/i.test(ch.title)
+            );
+
+            // If no chapters cached OR data looks corrupted, try to scrape specific detail
+            if (chapters.length === 0 || looksCorrupted) {
                 const scraper = this.scrapers.find(s => s.name === row.source);
                 if (scraper) {
-                    console.log(`[LazyLoad] Scraping chapters for ${row.title} (${row.source})`);
+                    console.log(`[LazyLoad] ${looksCorrupted ? 'Refreshing corrupted' : 'Scraping missing'} chapters for ${row.title} (${row.source})`);
                     const detailed = await scraper.scrapeDetail(row.link);
                     if (detailed && detailed.chapters) {
                         chapters = detailed.chapters;
@@ -230,6 +221,89 @@ export class MangaService {
             return await scraper.scrapeByGenre(genre, page);
         }
         return [];
+    }
+
+    async searchExternal(query: string, source?: string): Promise<ScrapedManga[]> {
+        const targets = source
+            ? this.scrapers.filter(s => s.name === source)
+            : this.scrapers;
+
+        const results = await Promise.allSettled(
+            targets.map(s => s.search ? s.search(query) : Promise.resolve([]))
+        );
+
+        const allManga: ScrapedManga[] = [];
+        results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+                allManga.push(...result.value);
+            } else {
+                console.error(`Search failed for ${targets[index].name}:`, result.reason);
+            }
+        });
+        return allManga;
+    }
+
+    async importManga(source: string, link: string) {
+        console.log(`[Import] Importing ${link} from ${source}...`);
+        const scraper = this.scrapers.find(s => s.name === source);
+        if (!scraper) throw new Error(`Scraper not found for source: ${source}`);
+
+        const detail = await scraper.scrapeDetail(link);
+        if (!detail) throw new Error(`Failed to scrape detail for ${link}`);
+
+        this.saveMangaToDb(detail, source, link);
+        return detail;
+    }
+
+    // Helper to save/update manga in DB
+    private saveMangaToDb(detail: any, source: string, link: string) {
+        const checkExists = db.prepare(`SELECT id FROM manga WHERE title = $title AND source = $source`);
+        const existing = checkExists.get({ $title: detail.title, $source: source }) as { id: number } | undefined;
+
+        if (existing) {
+            const update = db.prepare(`
+                UPDATE manga 
+                SET image = $image, chapter = $chapter, previous_chapter = $previous_chapter, 
+                    link = $link, last_updated = CURRENT_TIMESTAMP, 
+                    genres = $genres, synopsis = $synopsis, rating = $rating, 
+                    status = $status, author = $author, chapters = $chapters
+                WHERE id = $id
+            `);
+            update.run({
+                $id: existing.id,
+                $image: detail.image,
+                $chapter: detail.chapters[0]?.title || 'Unknown',
+                $previous_chapter: detail.chapters[1]?.title || null,
+                $link: link,
+                $genres: JSON.stringify(detail.genres),
+                $synopsis: detail.synopsis,
+                $rating: detail.rating,
+                $status: detail.status,
+                $author: detail.author,
+                $chapters: JSON.stringify(detail.chapters)
+            } as any);
+            console.log(`[Import] Updated manga: ${detail.title}`);
+        } else {
+            const insert = db.prepare(`
+                INSERT INTO manga (title, image, chapter, previous_chapter, link, source, is_trending, last_updated, genres, synopsis, rating, status, author, chapters)
+                VALUES ($title, $image, $chapter, $previous_chapter, $link, $source, 0, CURRENT_TIMESTAMP, $genres, $synopsis, $rating, $status, $author, $chapters)
+            `);
+            insert.run({
+                $title: detail.title,
+                $image: detail.image,
+                $chapter: detail.chapters[0]?.title || 'Unknown',
+                $previous_chapter: detail.chapters[1]?.title || null,
+                $link: link,
+                $source: source,
+                $genres: JSON.stringify(detail.genres),
+                $synopsis: detail.synopsis,
+                $rating: detail.rating,
+                $status: detail.status,
+                $author: detail.author,
+                $chapters: JSON.stringify(detail.chapters)
+            } as any);
+            console.log(`[Import] Inserted manga: ${detail.title}`);
+        }
     }
 }
 

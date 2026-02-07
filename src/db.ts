@@ -26,6 +26,29 @@ export function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS manga_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      manga_slug TEXT NOT NULL,
+      viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS site_visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip_hash TEXT,
+      visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      user_agent TEXT
+    )
+  `);
+
+  // Indices
+  db.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_slug ON manga_views(manga_slug)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_date ON manga_views(viewed_at)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_site_visits_date ON site_visits(visited_at)`);
+
+
   // Migration for existing tables (ignore errors if columns exist)
   try { db.run("ALTER TABLE manga ADD COLUMN link TEXT"); } catch { }
   try { db.run("ALTER TABLE manga ADD COLUMN source TEXT"); } catch { }

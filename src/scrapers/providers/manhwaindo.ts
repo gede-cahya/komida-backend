@@ -1,8 +1,10 @@
+
 import * as cheerio from 'cheerio';
 import { MangaSource, type ScrapedManga, type ScraperProvider, type MangaDetail, type MangaChapter, type ChapterData } from '../types';
 
 export class ManhwaIndoScraper implements ScraperProvider {
     name = MangaSource.MANHWAINDO;
+    private readonly baseUrl = 'https://www.manhwaindo.my/';
 
     private formatIndonesianDate(dateStr: string): string {
         const months: { [key: string]: string } = {
@@ -38,7 +40,8 @@ export class ManhwaIndoScraper implements ScraperProvider {
 
                 const title = titleElement.text().trim();
                 const link = linkElement.attr('href') || '';
-                const image = imgElement.attr('src') || '';
+                // Prefer data-src or data-original for lazy loaded images
+                const image = imgElement.attr('data-src') || imgElement.attr('data-original') || imgElement.attr('src') || '';
                 const chapter = latestChapterElement.text().trim();
                 const previous_chapter = prevChapterElement.text().trim();
 
@@ -61,6 +64,62 @@ export class ManhwaIndoScraper implements ScraperProvider {
             return [];
         }
     }
+
+    async search(query: string): Promise<ScrapedManga[]> {
+        try {
+            console.log(`Searching ${this.name} for "${query}"...`);
+            const url = `${this.baseUrl}?s=${encodeURIComponent(query)}`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Referer': this.baseUrl
+                }
+            });
+            if (!response.ok) throw new Error(`Failed to fetch search: ${response.status}`);
+
+            const html = await response.text();
+            const $ = cheerio.load(html);
+            const mangaList: ScrapedManga[] = [];
+
+            // Similar selectors to popular/latest
+            const items = $('.listupd .bs');
+            console.log(`[ManhwaIndo] Found ${items.length} items in search DOM.`);
+
+            items.each((_, element) => {
+                let title = $(element).find('.tt a').text().trim();
+                if (!title) title = $(element).find('.tt').text().trim(); // Fallback
+
+                const link = $(element).find('a').attr('href') || '';
+                let image = $(element).find('img').attr('data-src') ||
+                    $(element).find('img').attr('data-original') ||
+                    $(element).find('img').attr('src') || '';
+                const chapter = $(element).find('.epxs').text().trim();
+                const rating = parseFloat($(element).find('.numscore').text().trim()) || 0;
+
+                if (title && link) {
+                    mangaList.push({
+                        title,
+                        image,
+                        source: this.name,
+                        chapter,
+                        rating,
+                        link
+                    });
+                } else {
+                    console.log('[ManhwaIndo] Skip item due to missing title/link', title, link);
+                }
+            });
+
+            console.log(`Found ${mangaList.length} results from ${this.name}`);
+            return mangaList;
+        } catch (error) {
+            console.error(`Error searching ${this.name}:`, error);
+            return [];
+        }
+    }
+
     async scrapeDetail(link: string): Promise<MangaDetail | null> {
         try {
             console.log(`Scraping detail ${link}...`);
@@ -98,7 +157,8 @@ export class ManhwaIndoScraper implements ScraperProvider {
                 }
 
                 const chapLink = linkEl.attr('href') || '';
-                const released = linkEl.find('.chapterdate').text().trim() || linkEl.find('.chapter-date').text().trim() || $(element).find('.chapter-date').text().trim();
+                const rawReleased = linkEl.find('.chapterdate').text().trim() || linkEl.find('.chapter-date').text().trim() || $(element).find('.chapter-date').text().trim();
+                const released = this.formatIndonesianDate(rawReleased);
 
                 if (chapTitle && chapLink) {
                     chapters.push({
