@@ -41,7 +41,7 @@ export class AnalyticsService {
                 m.source,
                 COUNT(mv.id) as views 
             FROM manga_views mv
-            LEFT JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%' 
+            JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%' 
             WHERE mv.viewed_at > datetime('now', ${timeFilter})
             GROUP BY mv.manga_slug
             ORDER BY views DESC
