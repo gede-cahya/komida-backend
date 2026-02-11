@@ -468,7 +468,7 @@ app.get('/api/manga/detail', async (c) => {
     if (detail.chapters) {
         detail.chapters = detail.chapters.map((ch: any) => ({
             ...ch,
-            id: encryptData({ source, link: ch.link, title: ch.title }),
+            id: encryptData({ source, link: ch.link }),
             link: ''
         }));
     }
@@ -548,7 +548,7 @@ app.get('/api/manga/slug/:slug', async (c) => {
                 if (source.chapters) {
                     source.chapters = source.chapters.map((ch: any) => ({
                         ...ch,
-                        id: encryptData({ source: source.name, link: ch.link, title: ch.title }),
+                        id: encryptData({ source: source.name, link: ch.link }),
                         link: '' // Hide raw link
                     }));
                 }
