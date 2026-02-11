@@ -312,7 +312,7 @@ app.get('/api/admin/stats/popular', async (c) => {
     }
 });
 
-app.get('/api/admin/debug/analytics', async (c) => {
+app.get('/api/debug/analytics', async (c) => {
     try {
         const [visitCount] = await db.select({ count: count() }).from(siteVisits);
         const [viewCount] = await db.select({ count: count() }).from(mangaViews);
