@@ -330,11 +330,23 @@ app.get('/api/debug/analytics', async (c) => {
 
         // Complex Query Verification (Group By)
         const rawComplex = await db.execute(sql`
-            SELECT to_char(visited_at, 'HH24:00') as date, count(id) as visits 
+            SELECT 
+                to_char(visited_at, 'HH24:00') as date, 
+                COUNT(id) as visits 
             FROM site_visits 
             WHERE visited_at > NOW() - INTERVAL '1 day' 
-            GROUP BY to_char(visited_at, 'HH24:00') 
+            GROUP BY 1 
             ORDER BY 1 ASC
+        `);
+
+        // Debug Top 10 Manga JOIN
+        const sampleViews = await db.select().from(mangaViews).limit(5);
+        const sampleManga = await db.select().from(mangaTable).limit(5);
+        const checkJoin = await db.execute(sql`
+            SELECT mv.manga_slug, m.link 
+            FROM manga_views mv 
+            JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%' 
+            LIMIT 5
         `);
 
         return c.json({
@@ -346,7 +358,11 @@ app.get('/api/debug/analytics', async (c) => {
             totalViews: viewCount.count,
             queryResult_visits: dayVisits,
             queryResult_topManga: topManga,
-            recentVisits: recentVisits
+            debug_join: {
+                sampleViews,
+                sampleManga,
+                successfulJoins: checkJoin
+            }
         });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
