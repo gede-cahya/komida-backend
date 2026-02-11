@@ -3,7 +3,7 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { db, initDB } from './db'
 import { manga as mangaTable, siteVisits, mangaViews } from './db/schema'
-import { eq, desc, count } from 'drizzle-orm'
+import { eq, desc, count, sql } from 'drizzle-orm'
 
 initDB();
 console.log('Database initialized');
@@ -324,13 +324,19 @@ app.get('/api/debug/analytics', async (c) => {
         const dayVisits = await analyticsService.getSiteVisits('day');
         const topManga = await analyticsService.getTopManga('day');
 
+        // Logic verification (Raw SQL)
+        const rawNow = await db.execute(sql`SELECT NOW() as now, NOW() - INTERVAL '1 day' as yesterday`);
+        const rawCount = await db.execute(sql`SELECT count(*) as count FROM site_visits WHERE visited_at > NOW() - INTERVAL '1 day'`);
+
         return c.json({
             serverTime: new Date().toISOString(),
+            dbNow: rawNow[0],
+            rawDailyCount: rawCount[0],
             totalVisits: visitCount.count,
             totalViews: viewCount.count,
             queryResult_visits: dayVisits,
             queryResult_topManga: topManga,
-            recentVisits
+            recentVisits: recentVisits
         });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
