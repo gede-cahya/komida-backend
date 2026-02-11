@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { db, initDB } from './db'
-import { manga as mangaTable } from './db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { manga as mangaTable, siteVisits, mangaViews } from './db/schema'
+import { eq, desc, count } from 'drizzle-orm'
 
 initDB();
 console.log('Database initialized');
@@ -307,6 +307,25 @@ app.get('/api/admin/stats/popular', async (c) => {
     try {
         const popular = await analyticsService.getTopManga(period);
         return c.json(popular);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/admin/debug/analytics', async (c) => {
+    try {
+        const [visitCount] = await db.select({ count: count() }).from(siteVisits);
+        const [viewCount] = await db.select({ count: count() }).from(mangaViews);
+
+        // Get last 5 visits
+        const recentVisits = await db.select().from(siteVisits).orderBy(desc(siteVisits.visited_at)).limit(5);
+
+        return c.json({
+            serverTime: new Date().toISOString(),
+            totalVisits: visitCount.count,
+            totalViews: viewCount.count,
+            recentVisits
+        });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
     }
