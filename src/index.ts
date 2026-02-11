@@ -328,10 +328,20 @@ app.get('/api/debug/analytics', async (c) => {
         const rawNow = await db.execute(sql`SELECT NOW() as now, NOW() - INTERVAL '1 day' as yesterday`);
         const rawCount = await db.execute(sql`SELECT count(*) as count FROM site_visits WHERE visited_at > NOW() - INTERVAL '1 day'`);
 
+        // Complex Query Verification (Group By)
+        const rawComplex = await db.execute(sql`
+            SELECT to_char(visited_at, 'HH24:00') as date, count(id) as visits 
+            FROM site_visits 
+            WHERE visited_at > NOW() - INTERVAL '1 day' 
+            GROUP BY to_char(visited_at, 'HH24:00') 
+            ORDER BY 1 ASC
+        `);
+
         return c.json({
             serverTime: new Date().toISOString(),
             dbNow: rawNow[0],
             rawDailyCount: rawCount[0],
+            rawComplexResult: rawComplex,
             totalVisits: visitCount.count,
             totalViews: viewCount.count,
             queryResult_visits: dayVisits,
