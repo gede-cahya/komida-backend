@@ -217,19 +217,29 @@ export class ManhwaIndoScraper implements ScraperProvider {
                 }
             });
 
-            // Navigation - Filter out placeholders
-            let next = $('.ch-next-btn').attr('href');
-            let prev = $('.ch-prev-btn').attr('href');
+            // Navigation - Parse from Script Content (JSON variables)
+            const scriptContent = $('script').map((_, el) => $(el).html()).get().join(' ');
 
-            if (next && !next.startsWith('http')) next = undefined;
-            if (prev && !prev.startsWith('http')) prev = undefined;
+            // Regex for unique structure seen in debug: "prevUrl":"...","nextUrl":"..."
+            let next: string | undefined;
+            let prev: string | undefined;
 
-            // Fallback: Try to find any link with "Next" or "Prev" text if class fails
-            if (!next) next = $('a:contains("Next")').attr('href');
-            if (next && !next.startsWith('http')) next = undefined;
+            const nextMatch = scriptContent.match(/"nextUrl"\s*:\s*"([^"]*)"/);
+            const prevMatch = scriptContent.match(/"prevUrl"\s*:\s*"([^"]*)"/);
 
-            if (!prev) prev = $('a:contains("Prev")').attr('href');
-            if (prev && !prev.startsWith('http')) prev = undefined;
+            if (nextMatch && nextMatch[1]) {
+                const url = nextMatch[1].replace(/\\/g, ''); // Unescape slashes
+                if (url && url.startsWith('http')) {
+                    next = url;
+                }
+            }
+
+            if (prevMatch && prevMatch[1]) {
+                const url = prevMatch[1].replace(/\\/g, ''); // Unescape slashes
+                if (url && url.startsWith('http')) {
+                    prev = url;
+                }
+            }
 
             return { images, next, prev };
         } catch (error) {
