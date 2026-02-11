@@ -205,6 +205,15 @@ app.post('/api/admin/manga/import', async (c) => {
     }
 });
 
+app.post('/api/admin/manga/update-all', async (c) => {
+    try {
+        const result = await adminService.updateAllManga();
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // Comment Routes
 app.get('/api/comments', async (c) => {
     const slug = c.req.query('slug');

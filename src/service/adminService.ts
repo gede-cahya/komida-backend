@@ -115,6 +115,12 @@ export class AdminService {
     async importManga(source: string, link: string) {
         return mangaService.importManga(source, link);
     }
+
+    async updateAllManga() {
+        // Run in background, don't await
+        mangaService.updateAllManga().catch(e => console.error('[UpdateAll] Background task error:', e));
+        return { message: 'Update started in background' };
+    }
 }
 
 export const adminService = new AdminService();

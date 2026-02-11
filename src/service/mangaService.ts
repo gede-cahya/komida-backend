@@ -280,6 +280,45 @@ export class MangaService {
             console.log(`[Import] Inserted manga: ${detail.title}`);
         }
     }
+    async updateAllManga() {
+        console.log('[UpdateAll] Starting update for all manga...');
+        const allManga = await db.select().from(mangaTable);
+        console.log(`[UpdateAll] Found ${allManga.length} manga to update.`);
+
+        let updatedCount = 0;
+        let failedCount = 0;
+
+        // Process in chunks or sequentially to avoid overwhelming
+        for (const manga of allManga) {
+            try {
+                // simple delay to be nice to target servers
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                console.log(`[UpdateAll] Updating ${manga.title}...`);
+                const scraper = this.scrapers.find(s => s.name === manga.source);
+                if (!scraper) {
+                    console.warn(`[UpdateAll] Scraper not found for ${manga.source}`);
+                    failedCount++;
+                    continue;
+                }
+
+                const detail = await scraper.scrapeDetail(manga.link);
+                if (detail) {
+                    await this.saveMangaToDb(detail, manga.source, manga.link);
+                    updatedCount++;
+                } else {
+                    console.warn(`[UpdateAll] Failed to scrape detail for ${manga.title}`);
+                    failedCount++;
+                }
+            } catch (e) {
+                console.error(`[UpdateAll] Error updating ${manga.title}:`, e);
+                failedCount++;
+            }
+        }
+
+        console.log(`[UpdateAll] Completed. Updated: ${updatedCount}, Failed: ${failedCount}`);
+        return { updated: updatedCount, failed: failedCount };
+    }
 }
 
 export const mangaService = new MangaService();
