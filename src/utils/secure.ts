@@ -1,20 +1,18 @@
 
 const KEY = 'komida-v1';
 
-// XOR Cipher
-function xorString(text: string): string {
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(text.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length));
-    }
-    return result;
-}
-
 export function encryptData(data: any): string {
     try {
         const json = JSON.stringify(data);
-        const xor = xorString(json);
-        return Buffer.from(xor, 'binary').toString('base64url');
+        const buffer = Buffer.from(json, 'utf8');
+        const keyBuffer = Buffer.from(KEY, 'utf8');
+
+        const output = Buffer.alloc(buffer.length);
+        for (let i = 0; i < buffer.length; i++) {
+            output[i] = buffer[i] ^ keyBuffer[i % keyBuffer.length];
+        }
+
+        return output.toString('base64url');
     } catch (e) {
         console.error('Encryption failed', e);
         return '';
@@ -30,11 +28,18 @@ export function decryptData(enc: string): any {
     }
 
     try {
-        const xor = Buffer.from(enc, 'base64url').toString('binary');
-        const json = xorString(xor);
+        const buffer = Buffer.from(enc, 'base64url');
+        const keyBuffer = Buffer.from(KEY, 'utf8');
+
+        const output = Buffer.alloc(buffer.length);
+        for (let i = 0; i < buffer.length; i++) {
+            output[i] = buffer[i] ^ keyBuffer[i % keyBuffer.length];
+        }
+
+        const json = output.toString('utf8');
         return JSON.parse(json);
     } catch (e) {
-        console.error('Decryption failed for:', enc);
+        // console.error('Decryption failed for:', enc); // Squelch noise for invalid IDs
         return null;
     }
 }
