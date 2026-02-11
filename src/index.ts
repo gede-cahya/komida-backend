@@ -349,6 +349,12 @@ app.get('/api/debug/analytics', async (c) => {
             LIMIT 5
         `);
 
+        // Check recent views (to see if tracking is working NOW)
+        const recentViews = await db.select().from(mangaViews).orderBy(desc(mangaViews.viewed_at)).limit(5);
+
+        // Check if query works with longer timeframe
+        const resultsMonth = await analyticsService.getTopManga('month');
+
         return c.json({
             serverTime: new Date().toISOString(),
             dbNow: rawNow[0],
@@ -357,11 +363,11 @@ app.get('/api/debug/analytics', async (c) => {
             totalVisits: visitCount.count,
             totalViews: viewCount.count,
             queryResult_visits: dayVisits,
-            queryResult_topManga: topManga,
+            queryResult_topManga_day: topManga, // Rename for clarity
+            queryResult_topManga_month: resultsMonth, // Proof that query works
             debug_join: {
-                sampleViews,
-                sampleManga,
-                successfulJoins: checkJoin
+                successfulJoins: checkJoin,
+                recentViews: recentViews // Show newest views
             }
         });
     } catch (e: any) {
