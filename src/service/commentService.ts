@@ -1,48 +1,43 @@
-
 import { db } from '../db';
+import { comments as commentsTable, users as usersTable } from '../db/schema';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 
 export class CommentService {
 
     // Get comments for a slug (and optional chapter)
     async getComments(slug: string, chapterSlug?: string) {
-        let queryStr = `
-            SELECT c.*, u.username, u.role 
-            FROM comments c
-            JOIN users u ON c.user_id = u.id
-            WHERE c.slug = $slug
-        `;
+        const query = db.select({
+            id: commentsTable.id,
+            user_id: commentsTable.user_id,
+            slug: commentsTable.slug,
+            chapter_slug: commentsTable.chapter_slug,
+            content: commentsTable.content,
+            created_at: commentsTable.created_at,
+            username: usersTable.username,
+            role: usersTable.role
+        })
+            .from(commentsTable)
+            .innerJoin(usersTable, eq(commentsTable.user_id, usersTable.id))
+            .where(
+                and(
+                    eq(commentsTable.slug, slug),
+                    chapterSlug ? eq(commentsTable.chapter_slug, chapterSlug) : isNull(commentsTable.chapter_slug)
+                )
+            )
+            .orderBy(desc(commentsTable.created_at));
 
-        const params: any = { $slug: slug };
-
-        if (chapterSlug) {
-            queryStr += ` AND c.chapter_slug = $chapterSlug`;
-            params.$chapterSlug = chapterSlug;
-        } else {
-            // For manga detail, only show general comments (where chapter_slug is null)
-            // Or show all? Usually separate. Let's assume separate.
-            // If chapterSlug is undefined, we assume we want manga-level comments.
-            queryStr += ` AND c.chapter_slug IS NULL`;
-        }
-
-        queryStr += ` ORDER BY c.created_at DESC`;
-
-        const query = db.query(queryStr);
-        return query.all(params) as any[];
+        return await query;
     }
 
     async createComment(userId: number, slug: string, content: string, chapterSlug?: string) {
-        const query = db.prepare(`
-            INSERT INTO comments (user_id, slug, chapter_slug, content)
-            VALUES ($userId, $slug, $chapterSlug, $content)
-            RETURNING *
-        `);
+        const results = await db.insert(commentsTable).values({
+            user_id: userId,
+            slug,
+            chapter_slug: chapterSlug || null,
+            content
+        }).returning();
 
-        return query.get({
-            $userId: userId,
-            $slug: slug,
-            $chapterSlug: chapterSlug || null,
-            $content: content
-        }) as any;
+        return results[0];
     }
 }
 

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: komida-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./komida.db:/app/komida.db
+    restart: always
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: komida-tunnel
+    command: tunnel --config /etc/cloudflared/config-docker.yml run komida-api
+    volumes:
+      - /home/cahya/.cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - backend
+    restart: always

@@ -8,13 +8,17 @@
     },
     "dependencies": {
         "cheerio": "^1.2.0",
+        "drizzle-orm": "^0.45.1",
         "hono": "^4.0.0",
+        "postgres": "^3.4.8",
         "puppeteer": "^24.36.1",
         "puppeteer-extra": "^3.3.6",
         "puppeteer-extra-plugin-stealth": "^2.11.2",
         "sharp": "^0.34.5"
     },
     "devDependencies": {
-        "@types/bun": "latest"
+        "@types/bun": "latest",
+        "@types/pg": "^8.16.0",
+        "drizzle-kit": "^0.31.9"
     }
 }

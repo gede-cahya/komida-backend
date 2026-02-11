@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
-import { db } from './db'
+import { db, initDB } from './db'
+import { manga as mangaTable } from './db/schema'
+import { eq, desc } from 'drizzle-orm'
 
+initDB();
 const app = new Hono()
 
 app.use('*', logger())
@@ -24,7 +27,7 @@ app.use('*', async (c, next) => {
 
     // Skip tracking for static files or favicon if any, but this is API server so it's fine.
     // Also internal admin API calls might be excluded if desired, but let's track everything for now.
-    analyticsService.trackSiteVisit(ip, ua);
+    await analyticsService.trackSiteVisit(ip, ua);
 
     await next();
 });
@@ -77,6 +80,7 @@ app.use('/api/admin/*', async (c, next) => {
 
     const token = authHeader.split(' ')[1];
     const payload = await verifyToken(token);
+
 
     if (!payload || payload.role !== 'admin') {
         return c.json({ error: 'Forbidden: Admins only' }, 403);
@@ -246,12 +250,13 @@ app.post('/api/comments', async (c) => {
 });
 
 // Admin Dashboard Data
-app.get('/api/admin/dashboard', (c) => {
+app.get('/api/admin/dashboard', async (c) => {
+    const summary = await analyticsService.getSummary();
     return c.json({
         message: 'Welcome to Admin Dashboard',
         stats: {
-            users: 1, // Dummy
-            manga: 100, // Dummy
+            users: 1, // Optional: could get real count from summary if needed
+            manga: summary.totalManga,
             serverUptime: process.uptime()
         }
     });
@@ -261,7 +266,7 @@ app.get('/api/admin/dashboard', (c) => {
 
 app.get('/api/admin/stats/summary', async (c) => {
     try {
-        const summary = analyticsService.getSummary();
+        const summary = await analyticsService.getSummary();
         return c.json(summary);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
@@ -271,7 +276,7 @@ app.get('/api/admin/stats/summary', async (c) => {
 app.get('/api/admin/stats/visits', async (c) => {
     const period = c.req.query('period') as 'day' | 'week' | 'month' || 'day';
     try {
-        const visits = analyticsService.getSiteVisits(period);
+        const visits = await analyticsService.getSiteVisits(period);
         return c.json(visits);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
@@ -281,7 +286,7 @@ app.get('/api/admin/stats/visits', async (c) => {
 app.get('/api/admin/stats/popular', async (c) => {
     const period = c.req.query('period') as 'day' | 'week' | 'month' || 'day';
     try {
-        const popular = analyticsService.getTopManga(period);
+        const popular = await analyticsService.getTopManga(period);
         return c.json(popular);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
@@ -289,10 +294,7 @@ app.get('/api/admin/stats/popular', async (c) => {
 });
 
 
-// SQL Queries
-const getTrending = db.query('SELECT * FROM manga WHERE is_trending = 1');
-const getRecent = db.query('SELECT * FROM manga ORDER BY last_updated DESC LIMIT 10'); // Fix: Get all latest regardless of trending
-// Removed old getPopular query to use service instead
+// SQL Queries removed and replaced by Drizzle
 
 app.get('/', (c) => {
     return c.json({ message: 'Welcome to Komida Backend' })
@@ -302,13 +304,18 @@ app.get('/health', (c) => {
     return c.json({ status: 'ok', uptime: process.uptime() })
 })
 
-app.get('/api/trending', (c) => {
-    const trending = getTrending.all();
+app.get('/api/trending', async (c) => {
+    const trending = await db.select()
+        .from(mangaTable)
+        .where(eq(mangaTable.is_trending, true));
     return c.json(trending)
 })
 
-app.get('/api/recent', (c) => {
-    const recent = getRecent.all();
+app.get('/api/recent', async (c) => {
+    const recent = await db.select()
+        .from(mangaTable)
+        .orderBy(desc(mangaTable.last_updated))
+        .limit(10);
     return c.json(recent)
 })
 
@@ -317,11 +324,11 @@ app.get('/api/popular', async (c) => {
     const page = parseInt(c.req.query('page') || '1');
     const limit = 24;
 
-    let popular = mangaService.getPopularManga(page, limit);
+    let popular = await mangaService.getPopularManga(page, limit);
 
     if ((popular.length === 0 && page === 1) || refresh) {
         await mangaService.updatePopularCache();
-        popular = mangaService.getPopularManga(page, limit);
+        popular = await mangaService.getPopularManga(page, limit);
     }
 
     // Pass metadata? The current frontend expects array.
@@ -447,7 +454,7 @@ app.get('/api/manga/slug/:slug', async (c) => {
         const slug = c.req.param('slug');
 
         // Track View
-        analyticsService.trackMangaView(slug);
+        await analyticsService.trackMangaView(slug);
 
         const data = await mangaService.getMangaBySlug(slug);
 
@@ -549,6 +556,6 @@ app.get('/api/image/proxy', async (c) => {
 });
 
 export default {
-    port: 3001,
+    port: 3001, hostname: "0.0.0.0",
     fetch: app.fetch,
 }

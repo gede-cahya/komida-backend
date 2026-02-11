@@ -1,13 +1,41 @@
 import { Database } from 'bun:sqlite';
 import { join } from 'path';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/bun-sqlite';
+import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './db/schema';
 
-// Locate komida.db relative to this file (src/db.ts) -> parent/komida.db
+const DATABASE_URL = process.env.DATABASE_URL;
+
+// Legacy SQLite DB for local development/fallback
 const dbPath = join(import.meta.dir, '../komida.db');
-export const db = new Database(dbPath);
+export const sqlite = new Database(dbPath);
 
-// Initialize database schema
+// Drizzle DB instances
+export let db: any;
+
+if (DATABASE_URL) {
+  console.log('Connecting to PostgreSQL (Supabase)...');
+  const queryClient = postgres(DATABASE_URL);
+  db = drizzlePg(queryClient, { schema });
+} else {
+  console.log('Using local SQLite at:', dbPath);
+  db = drizzleSqlite(sqlite, { schema });
+}
+
+// Export the raw sqlite object as 'legacyDb' for existing code that hasn't migrated yet
+export const legacyDb = sqlite;
+
+// Initialize database schema (legacy way + ensure tables exist)
 export function initDB() {
-  db.run(`
+  if (DATABASE_URL) {
+    console.log('Note: Using Supabase. Schema should be managed via migrations or dashboard.');
+    // In a real app, we'd run migrations here.
+    return;
+  }
+
+  // SQLite initialization (legacy)
+  legacyDb.run(`
     CREATE TABLE IF NOT EXISTS manga (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -22,11 +50,15 @@ export function initDB() {
       link TEXT,
       source TEXT,
       chapters TEXT,
+      genres TEXT,
+      synopsis TEXT,
+      status TEXT,
+      author TEXT,
       last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  db.run(`
+  legacyDb.run(`
     CREATE TABLE IF NOT EXISTS manga_views (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       manga_slug TEXT NOT NULL,
@@ -34,7 +66,7 @@ export function initDB() {
     )
   `);
 
-  db.run(`
+  legacyDb.run(`
     CREATE TABLE IF NOT EXISTS site_visits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ip_hash TEXT,
@@ -44,20 +76,9 @@ export function initDB() {
   `);
 
   // Indices
-  db.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_slug ON manga_views(manga_slug)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_date ON manga_views(viewed_at)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_site_visits_date ON site_visits(visited_at)`);
+  legacyDb.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_slug ON manga_views(manga_slug)`);
+  legacyDb.run(`CREATE INDEX IF NOT EXISTS idx_manga_views_date ON manga_views(viewed_at)`);
+  legacyDb.run(`CREATE INDEX IF NOT EXISTS idx_site_visits_date ON site_visits(visited_at)`);
 
-
-  // Migration for existing tables (ignore errors if columns exist)
-  try { db.run("ALTER TABLE manga ADD COLUMN link TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN source TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN chapters TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN genres TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN synopsis TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN status TEXT"); } catch { }
-  try { db.run("ALTER TABLE manga ADD COLUMN author TEXT"); } catch { }
-  // Note: SQLite columns have flexible typing, so existing INTEGER chapters can hold TEXT.
-
-  console.log('Database initialized at:', dbPath);
+  console.log('SQLite Database initialized.');
 }

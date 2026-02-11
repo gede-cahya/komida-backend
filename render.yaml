@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: komida-backend
+    runtime: docker
+    plan: free
+    region: singapore
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: PORT
+        value: 3001
+    healthCheckPath: /health

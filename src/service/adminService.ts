@@ -1,5 +1,6 @@
-
 import { db } from '../db';
+import { manga as mangaTable, users as usersTable } from '../db/schema';
+import { eq, like, desc, count } from 'drizzle-orm';
 import { mangaService } from './mangaService';
 
 export class AdminService {
@@ -9,57 +10,61 @@ export class AdminService {
     async getAllUsers(page: number = 1, limit: number = 20, search: string = '') {
         const offset = (page - 1) * limit;
 
-        let queryStr = 'SELECT id, username, role, created_at FROM users';
-        let countQueryStr = 'SELECT COUNT(*) as total FROM users';
-        const params: any = {};
+        const whereClause = search ? like(usersTable.username, `%${search}%`) : undefined;
 
-        if (search) {
-            const where = ' WHERE username LIKE $search';
-            queryStr += where;
-            countQueryStr += where;
-            params.$search = `%${search}%`;
-        }
+        const users = await db.select({
+            id: usersTable.id,
+            username: usersTable.username,
+            role: usersTable.role,
+            created_at: usersTable.created_at
+        })
+            .from(usersTable)
+            .where(whereClause)
+            .orderBy(desc(usersTable.created_at))
+            .limit(limit)
+            .offset(offset);
 
-        queryStr += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+        const [totalResult] = await db.select({ total: count() })
+            .from(usersTable)
+            .where(whereClause);
 
-        const users = db.query(queryStr).all(params);
-        const totalResult = db.query(countQueryStr).get(params) as any;
+        const total = Number(totalResult.total);
 
         return {
             users,
-            total: totalResult.total,
+            total,
             page,
             limit,
-            totalPages: Math.ceil(totalResult.total / limit)
+            totalPages: Math.ceil(total / limit)
         };
     }
 
     async updateUser(id: number, data: { username?: string, role?: string, password?: string }) {
-        const updates: string[] = [];
-        const params: any = { $id: id };
+        const updateData: any = {};
 
-        if (data.username) {
-            updates.push('username = $username');
-            params.$username = data.username;
-        }
-        if (data.role) {
-            updates.push('role = $role');
-            params.$role = data.role;
-        }
+        if (data.username) updateData.username = data.username;
+        if (data.role) updateData.role = data.role;
         if (data.password) {
-            const hashedPassword = await Bun.password.hash(data.password);
-            updates.push('password = $password');
-            params.$password = hashedPassword;
+            updateData.password = await Bun.password.hash(data.password);
         }
 
-        if (updates.length === 0) return null;
+        if (Object.keys(updateData).length === 0) return null;
 
-        const query = `UPDATE users SET ${updates.join(', ')} WHERE id = $id RETURNING id, username, role, created_at`;
-        return db.query(query).get(params);
+        const results = await db.update(usersTable)
+            .set(updateData)
+            .where(eq(usersTable.id, id))
+            .returning({
+                id: usersTable.id,
+                username: usersTable.username,
+                role: usersTable.role,
+                created_at: usersTable.created_at
+            });
+
+        return results[0];
     }
 
     async deleteUser(id: number) {
-        return db.query('DELETE FROM users WHERE id = $id').run({ $id: id });
+        await db.delete(usersTable).where(eq(usersTable.id, id));
     }
 
     // --- Manga Management ---
@@ -67,34 +72,40 @@ export class AdminService {
     async getAllManga(page: number = 1, limit: number = 20, search: string = '') {
         const offset = (page - 1) * limit;
 
-        let queryStr = 'SELECT id, title, image, source, chapter, is_trending, last_updated FROM manga';
-        let countQueryStr = 'SELECT COUNT(*) as total FROM manga';
-        const params: any = {};
+        const whereClause = search ? like(mangaTable.title, `%${search}%`) : undefined;
 
-        if (search) {
-            queryStr += ' WHERE title LIKE $search';
-            countQueryStr += ' WHERE title LIKE $search';
-            params.$search = `%${search}%`;
-        }
+        const manga = await db.select({
+            id: mangaTable.id,
+            title: mangaTable.title,
+            image: mangaTable.image,
+            source: mangaTable.source,
+            chapter: mangaTable.chapter,
+            is_trending: mangaTable.is_trending,
+            last_updated: mangaTable.last_updated
+        })
+            .from(mangaTable)
+            .where(whereClause)
+            .orderBy(desc(mangaTable.last_updated))
+            .limit(limit)
+            .offset(offset);
 
-        queryStr += ` ORDER BY last_updated DESC LIMIT $limit OFFSET $offset`;
-        params.$limit = limit;
-        params.$offset = offset;
+        const [totalResult] = await db.select({ total: count() })
+            .from(mangaTable)
+            .where(whereClause);
 
-        const manga = db.query(queryStr).all(params);
-        const totalResult = db.query(countQueryStr).get(params) as any;
+        const total = Number(totalResult.total);
 
         return {
             manga,
-            total: totalResult.total,
+            total,
             page,
             limit,
-            totalPages: Math.ceil(totalResult.total / limit)
+            totalPages: Math.ceil(total / limit)
         };
     }
 
     async deleteManga(id: number) {
-        return db.query('DELETE FROM manga WHERE id = $id').run({ $id: id });
+        await db.delete(mangaTable).where(eq(mangaTable.id, id));
     }
 
     async searchExternalManga(query: string, source?: string) {
