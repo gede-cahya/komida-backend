@@ -9,7 +9,12 @@ initDB();
 const app = new Hono()
 
 app.use('*', logger())
-app.use('*', cors())
+app.use('*', cors({
+    origin: (origin) => origin, // Allow all origins explicitly for debugging
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+}))
 
 import { mangaService } from './service/mangaService';
 import { userService } from './service/userService';
@@ -556,6 +561,7 @@ app.get('/api/image/proxy', async (c) => {
 });
 
 export default {
-    port: 3001, hostname: "0.0.0.0",
+    port: process.env.PORT || 3001,
+    hostname: "0.0.0.0",
     fetch: app.fetch,
 }
