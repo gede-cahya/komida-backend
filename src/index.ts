@@ -11,11 +11,14 @@ const app = new Hono()
 
 app.use('*', logger())
 app.use('*', cors({
-    origin: (origin) => origin, // Allow all origins explicitly for debugging
+    origin: (origin) => origin,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
 }))
+
+app.get('/health', (c) => {
+    return c.json({ status: 'ok', uptime: process.uptime() })
+})
 
 import { mangaService } from './service/mangaService';
 import { userService } from './service/userService';
@@ -306,9 +309,7 @@ app.get('/', (c) => {
     return c.json({ message: 'Welcome to Komida Backend' })
 })
 
-app.get('/health', (c) => {
-    return c.json({ status: 'ok', uptime: process.uptime() })
-})
+// Health moved to top
 
 app.get('/api/trending', async (c) => {
     const trending = await db.select()
