@@ -320,10 +320,16 @@ app.get('/api/debug/analytics', async (c) => {
         // Get last 5 visits
         const recentVisits = await db.select().from(siteVisits).orderBy(desc(siteVisits.visited_at)).limit(5);
 
+        // Test the analytics queries
+        const dayVisits = await analyticsService.getSiteVisits('day');
+        const topManga = await analyticsService.getTopManga('day');
+
         return c.json({
             serverTime: new Date().toISOString(),
             totalVisits: visitCount.count,
             totalViews: viewCount.count,
+            queryResult_visits: dayVisits,
+            queryResult_topManga: topManga,
             recentVisits
         });
     } catch (e: any) {
