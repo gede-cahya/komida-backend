@@ -97,7 +97,7 @@ export class AnalyticsService {
                 .from(siteVisits)
                 .where(gt(siteVisits.visited_at, timeFilter))
                 .groupBy(dateGroup)
-                .orderBy(sql`date ASC`);
+                .orderBy(dateGroup);
 
             return results.map((r: any) => ({
                 ...r,
