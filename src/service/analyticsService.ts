@@ -41,7 +41,7 @@ export class AnalyticsService {
         if (period === 'month') timeInterval = "'-30 days'";
 
         const timeFilter = isPostgres
-            ? sql`NOW() - INTERVAL ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}`
+            ? sql`NOW() - ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}::interval`
             : sql`datetime('now', ${timeInterval})`;
 
         try {
@@ -82,7 +82,7 @@ export class AnalyticsService {
         }
 
         const timeFilter = isPostgres
-            ? sql`NOW() - INTERVAL ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}`
+            ? sql`NOW() - ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}::interval`
             : sql`datetime('now', ${timeInterval})`;
 
         const dateGroup = isPostgres
