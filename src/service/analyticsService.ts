@@ -36,33 +36,53 @@ export class AnalyticsService {
 
     async getTopManga(period: 'day' | 'week' | 'month' = 'day') {
         const isPostgres = process.env.DATABASE_URL !== undefined;
-        let timeInterval = "'-1 day'";
-        if (period === 'week') timeInterval = "'-7 days'";
-        if (period === 'month') timeInterval = "'-30 days'";
-
-        const timeFilter = isPostgres
-            ? sql`NOW() - ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}::interval`
-            : sql`datetime('now', ${timeInterval})`;
+        let interval = '1 day';
+        if (period === 'week') interval = '7 days';
+        if (period === 'month') interval = '30 days';
 
         try {
-            const results = await db.select({
-                slug: mangaViews.manga_slug,
-                title: mangaTable.title,
-                image: mangaTable.image,
-                source: mangaTable.source,
-                views: count(mangaViews.id)
-            })
-                .from(mangaViews)
-                .innerJoin(mangaTable, sql`${mangaTable.link} LIKE '%' || ${mangaViews.manga_slug} || '%'`)
-                .where(gt(mangaViews.viewed_at, timeFilter))
-                .groupBy(mangaViews.manga_slug, mangaTable.title, mangaTable.image, mangaTable.source)
-                .orderBy(desc(count(mangaViews.id)))
-                .limit(10);
+            if (isPostgres) {
+                const query = sql`
+                    SELECT 
+                        m.title, 
+                        m.image, 
+                        m.source, 
+                        mv.manga_slug as slug, 
+                        COUNT(mv.id) as views
+                    FROM manga_views mv
+                    JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%'
+                    WHERE mv.viewed_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+                    GROUP BY mv.manga_slug, m.title, m.image, m.source
+                    ORDER BY views DESC
+                    LIMIT 10
+                `;
+                const results = await db.execute(query);
+                return results.map((r: any) => ({
+                    ...r,
+                    views: Number(r.views)
+                }));
+            } else {
+                // SQLite Fallback (Keep existing Drizzle or use Raw SQLite if needed, but keeping Drizzle for dev is fine if it works)
+                // For consistency, let's stick to Drizzle for SQLite since the issue is likely Postgres-specific binding
+                const timeInterval = period === 'day' ? "'-1 day'" : period === 'week' ? "'-7 days'" : "'-30 days'";
+                const timeFilter = sql`datetime('now', ${timeInterval})`;
 
-            return results.map((r: any) => ({
-                ...r,
-                views: Number(r.views)
-            }));
+                const results = await db.select({
+                    slug: mangaViews.manga_slug,
+                    title: mangaTable.title,
+                    image: mangaTable.image,
+                    source: mangaTable.source,
+                    views: count(mangaViews.id)
+                })
+                    .from(mangaViews)
+                    .innerJoin(mangaTable, sql`${mangaTable.link} LIKE '%' || ${mangaViews.manga_slug} || '%'`)
+                    .where(gt(mangaViews.viewed_at, timeFilter))
+                    .groupBy(mangaViews.manga_slug, mangaTable.title, mangaTable.image, mangaTable.source)
+                    .orderBy(desc(count(mangaViews.id)))
+                    .limit(10);
+
+                return results.map((r: any) => ({ ...r, views: Number(r.views) }));
+            }
         } catch (error) {
             console.error('Error getting top manga:', error);
             return [];
@@ -71,38 +91,55 @@ export class AnalyticsService {
 
     async getSiteVisits(period: 'day' | 'week' | 'month' = 'day') {
         const isPostgres = process.env.DATABASE_URL !== undefined;
-        let timeInterval = "'-1 day'";
-        let groupFormatSqlite = "'%H:00'";
-        let groupFormatPg = 'HH24:00';
+        let interval = '1 day';
+        let dateFormat = 'HH24:00';
 
-        if (period === 'week' || period === 'month') {
-            timeInterval = period === 'week' ? "'-7 days'" : "'-30 days'";
-            groupFormatSqlite = "'%Y-%m-%d'";
-            groupFormatPg = 'YYYY-MM-DD';
+        if (period === 'week') {
+            interval = '7 days';
+            dateFormat = 'YYYY-MM-DD';
+        }
+        if (period === 'month') {
+            interval = '30 days';
+            dateFormat = 'YYYY-MM-DD';
         }
 
-        const timeFilter = isPostgres
-            ? sql`NOW() - ${period === 'day' ? '1 day' : period === 'week' ? '7 days' : '30 days'}::interval`
-            : sql`datetime('now', ${timeInterval})`;
-
-        const dateGroup = isPostgres
-            ? sql`to_char(${siteVisits.visited_at}, ${groupFormatPg})`
-            : sql`strftime(${sql.raw(groupFormatSqlite)}, ${siteVisits.visited_at})`;
-
         try {
-            const results = await db.select({
-                date: dateGroup,
-                visits: count(siteVisits.id)
-            })
-                .from(siteVisits)
-                .where(gt(siteVisits.visited_at, timeFilter))
-                .groupBy(dateGroup)
-                .orderBy(sql`1 ASC`);
+            if (isPostgres) {
+                const query = sql`
+                    SELECT 
+                        to_char(visited_at, ${dateFormat}) as date, 
+                        COUNT(id) as visits 
+                    FROM site_visits 
+                    WHERE visited_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+                    GROUP BY to_char(visited_at, ${dateFormat}) 
+                    ORDER BY 1 ASC
+                `;
 
-            return results.map((r: any) => ({
-                ...r,
-                visits: Number(r.visits)
-            }));
+                const results = await db.execute(query);
+                return results.map((r: any) => ({
+                    ...r,
+                    visits: Number(r.visits)
+                }));
+            } else {
+                // SQLite Fallback
+                let time = "'-1 day'";
+                if (period === 'week') time = "'-7 days'";
+                if (period === 'month') time = "'-30 days'";
+
+                let group = "'%H:00'";
+                if (period !== 'day') group = "'%Y-%m-%d'";
+
+                const results = await db.select({
+                    date: sql`strftime(${sql.raw(group)}, ${siteVisits.visited_at})`,
+                    visits: count(siteVisits.id)
+                })
+                    .from(siteVisits)
+                    .where(gt(siteVisits.visited_at, sql`datetime('now', ${time})`))
+                    .groupBy(sql`strftime(${sql.raw(group)}, ${siteVisits.visited_at})`)
+                    .orderBy(sql`1 ASC`);
+
+                return results.map((r: any) => ({ ...r, visits: Number(r.visits) }));
+            }
         } catch (error) {
             console.error('Error getting site visits:', error);
             return [];
