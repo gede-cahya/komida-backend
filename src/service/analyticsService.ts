@@ -59,7 +59,10 @@ export class AnalyticsService {
                 .orderBy(desc(count(mangaViews.id)))
                 .limit(10);
 
-            return results;
+            return results.map((r: any) => ({
+                ...r,
+                views: Number(r.views)
+            }));
         } catch (error) {
             console.error('Error getting top manga:', error);
             return [];
@@ -96,7 +99,10 @@ export class AnalyticsService {
                 .groupBy(dateGroup)
                 .orderBy(sql`date ASC`);
 
-            return results;
+            return results.map((r: any) => ({
+                ...r,
+                visits: Number(r.visits)
+            }));
         } catch (error) {
             console.error('Error getting site visits:', error);
             return [];

@@ -31,12 +31,13 @@ const analyticsService = new AnalyticsService();
 // Analytics Middleware
 app.use('*', async (c, next) => {
     // Track unique IPs as site visits
-    const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
-    const ua = c.req.header('user-agent') || 'unknown';
+    if (c.req.method !== 'OPTIONS') {
+        const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+        const ua = c.req.header('user-agent') || 'unknown';
 
-    // Skip tracking for static files or favicon if any, but this is API server so it's fine.
-    // Also internal admin API calls might be excluded if desired, but let's track everything for now.
-    await analyticsService.trackSiteVisit(ip, ua);
+        // Skip tracking for static files or favicon if any, but this is API server so it's fine.
+        await analyticsService.trackSiteVisit(ip, ua);
+    }
 
     await next();
 });
