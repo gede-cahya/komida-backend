@@ -105,13 +105,14 @@ export class AnalyticsService {
 
         try {
             if (isPostgres) {
+                // Use GROUP BY 1 to avoid "must appear in GROUP BY clause" errors with parameters
                 const query = sql`
                     SELECT 
-                        to_char(visited_at, ${dateFormat}) as date, 
+                        to_char(visited_at, ${sql.raw(`'${dateFormat}'`)}) as date, 
                         COUNT(id) as visits 
                     FROM site_visits 
                     WHERE visited_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
-                    GROUP BY to_char(visited_at, ${dateFormat}) 
+                    GROUP BY 1 
                     ORDER BY 1 ASC
                 `;
 
