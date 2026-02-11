@@ -6,6 +6,7 @@ import { manga as mangaTable } from './db/schema'
 import { eq, desc } from 'drizzle-orm'
 
 initDB();
+console.log('Database initialized');
 const app = new Hono()
 
 app.use('*', logger())
@@ -559,6 +560,8 @@ app.get('/api/image/proxy', async (c) => {
         return c.text('Proxy error', 500);
     }
 });
+
+console.log(`Server is running at 0.0.0.0:${process.env.PORT || 3001}`);
 
 export default {
     port: process.env.PORT || 3001,
