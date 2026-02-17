@@ -14,7 +14,9 @@ export class CommentService {
             content: commentsTable.content,
             created_at: commentsTable.created_at,
             username: usersTable.username,
-            role: usersTable.role
+            role: usersTable.role,
+            display_name: usersTable.display_name,
+            avatar_url: usersTable.avatar_url
         })
             .from(commentsTable)
             .innerJoin(usersTable, eq(commentsTable.user_id, usersTable.id))

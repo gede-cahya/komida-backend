@@ -342,13 +342,16 @@ app.post('/api/comments', async (c) => {
         }
 
         const comment = await commentService.createComment(payload.id, slug, content, chapter);
+        const userProfile = await userService.getUserById(payload.id);
 
         // Return with username for immediate display
         return c.json({
             comment: {
                 ...comment,
-                username: payload.username,
-                role: payload.role
+                username: userProfile.username,
+                role: userProfile.role,
+                display_name: userProfile.display_name,
+                avatar_url: userProfile.avatar_url
             }
         });
     } catch (e: any) {
