@@ -715,12 +715,7 @@ app.get('/api/image/proxy', async (c) => {
         }
 
         try {
-            outputBuffer = await sharp(Buffer.from(arrayBuffer))
-                .resize({ width: 720, withoutEnlargement: true })  // Smaller resize target
-                .webp({ quality: 50 })  // Lower quality = less memory + smaller output
-                .toBuffer();
-
-            c.header('Content-Type', 'image/webp');
+            outputBuffer = arrayBuffer; // BYPASS SHARP
         } catch (sharpError) {
             console.warn(`[Proxy] Sharp failed for ${url}, returning original`);
             c.header('Content-Type', contentType || 'application/octet-stream');
