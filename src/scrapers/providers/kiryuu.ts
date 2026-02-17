@@ -231,33 +231,68 @@ export class KiryuuScraper implements ScraperProvider {
     async scrapeChapter(link: string): Promise<ChapterData | null> {
         try {
             console.log(`Scraping chapter ${link}...`);
+
+            const images: string[] = [];
+            let next: string | undefined;
+            let prev: string | undefined;
+
+            // Strategy 1: Use WP REST API (Kiryuu's new approach)
+            // Extract chapter_id from URL pattern: chapter-XX.CHAPTER_ID/
+            const chapterIdMatch = link.match(/\.(\d+)\/?$/);
+            if (chapterIdMatch) {
+                const chapterId = chapterIdMatch[1];
+                const apiUrl = `${this.baseUrl}wp-json/wp/v2/chapter/${chapterId}`;
+                console.log(`[Kiryuu] Trying WP REST API: ${apiUrl}`);
+
+                try {
+                    const apiResponse = await fetch(apiUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        }
+                    });
+
+                    if (apiResponse.ok) {
+                        const apiData = await apiResponse.json();
+                        if (apiData.content?.rendered) {
+                            const content$ = cheerio.load(apiData.content.rendered);
+                            content$('img').each((_, element) => {
+                                const src = content$(element).attr('src');
+                                if (src && !src.startsWith('data:image')) {
+                                    images.push(src.trim());
+                                }
+                            });
+                            console.log(`[Kiryuu] WP REST API returned ${images.length} images`);
+                        }
+                    }
+                } catch (apiErr) {
+                    console.error(`[Kiryuu] WP REST API failed:`, apiErr);
+                }
+            }
+
+            // Fetch the chapter page for nav links (prev/next) and fallback image extraction
             const response = await fetch(link, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
             });
             if (!response.ok) {
-                console.error(`Failed to fetch chapter: ${response.status}`);
+                console.error(`Failed to fetch chapter page: ${response.status}`);
+                // If we already got images from API, return them without nav
+                if (images.length > 0) return { images, next, prev };
                 return null;
             }
             const html = await response.text();
             const $ = cheerio.load(html);
 
-            const images: string[] = [];
-            $('#readerarea img').each((_, element) => {
-                const dataSrc = $(element).attr('data-src');
-                const src = $(element).attr('src');
-                const validSrc = dataSrc || src;
-
-                if (validSrc && !validSrc.startsWith('data:image')) {
-                    images.push(validSrc.trim());
-                }
-            });
-
+            // Fallback image extraction from HTML if API didn't return images
             if (images.length === 0) {
-                $('.reading-content img').each((_, element) => {
-                    const src = $(element).attr('src') || $(element).attr('data-src');
-                    if (src) images.push(src.trim());
+                $('#readerarea img').each((_, element) => {
+                    const dataSrc = $(element).attr('data-src');
+                    const src = $(element).attr('src');
+                    const validSrc = dataSrc || src;
+                    if (validSrc && !validSrc.startsWith('data:image')) {
+                        images.push(validSrc.trim());
+                    }
                 });
             }
 
@@ -287,8 +322,9 @@ export class KiryuuScraper implements ScraperProvider {
                 }
             }
 
-            let next = $('.nextprev a.next_ch, a[rel="next"], a[aria-label="Next"]').attr('href');
-            let prev = $('.nextprev a.prev_ch, a[rel="prev"], a[aria-label="Prev"]').attr('href');
+            // Extract next/prev navigation
+            next = $('a[aria-label="Next"]').attr('href') || $('.nextprev a.next_ch').attr('href') || $('a[rel="next"]').attr('href');
+            prev = $('a[aria-label="Prev"]').attr('href') || $('.nextprev a.prev_ch').attr('href') || $('a[rel="prev"]').attr('href');
 
             if (next === '#' || next === '' || next === 'javascript:void(0)') next = undefined;
             if (prev === '#' || prev === '' || prev === 'javascript:void(0)') prev = undefined;
