@@ -46,13 +46,13 @@ app.use('*', async (c, next) => {
 app.post('/api/auth/register', async (c) => {
     try {
         const body = await c.req.json();
-        const { username, password, role } = body;
+        const { username, password } = body;
 
         if (!username || !password) {
             return c.json({ error: 'Username and password are required' }, 400);
         }
 
-        const user = await userService.createUser(username, password, role);
+        const user = await userService.createUser(username, password, 'user');
         const token = await createToken({ id: user.id, username: user.username, role: user.role });
 
         return c.json({ user, token });

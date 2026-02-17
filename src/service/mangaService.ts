@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { manga as mangaTable } from '../db/schema';
-import { eq, and, like, desc, sql } from 'drizzle-orm';
+import { eq, and, like, ilike, desc, sql } from 'drizzle-orm';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
 import { ShinigamiBrowserScraper } from '../scrapers/providers/shinigami-browser';
@@ -103,12 +103,25 @@ export class MangaService {
     async searchManga(query: string) {
         const results = await db.select()
             .from(mangaTable)
-            .where(like(mangaTable.title, `%${query}%`));
+            .where(ilike(mangaTable.title, `%${query}%`));
 
-        return results.map((row: any) => ({
-            ...row,
-            genres: JSON.parse(row.genres || '[]'),
-            chapters: JSON.parse(row.chapters || '[]')
+        if (results.length > 0) {
+            return results.map((row: any) => ({
+                ...row,
+                genres: JSON.parse(row.genres || '[]'),
+                chapters: JSON.parse(row.chapters || '[]')
+            }));
+        }
+
+        // Fallback: search external scrapers if local DB has no results
+        const externalResults = await this.searchExternal(query);
+        return externalResults.map((manga: any) => ({
+            title: manga.title,
+            image: manga.image,
+            chapter: manga.chapter || '?',
+            rating: manga.rating || 0,
+            link: manga.link,
+            source: manga.source,
         }));
     }
 
