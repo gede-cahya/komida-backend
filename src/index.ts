@@ -2,18 +2,43 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { db, initDB } from './db'
+import { secureHeaders } from 'hono/secure-headers'
+import { rateLimiter } from 'hono-rate-limiter'
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { manga as mangaTable, siteVisits, mangaViews } from './db/schema'
 import { eq, desc, count, sql } from 'drizzle-orm'
+import { zValidator } from '@hono/zod-validator'
+import { loginSchema, registerSchema, commentSchema, userUpdateSchema, mangaUpdateSchema } from './zod/schemas'
+import sharp from 'sharp';
+import { encryptData, decryptData } from './utils/secure';
 
 await initDB();
 console.log('Database initialized');
 const app = new Hono()
 
 app.use('*', logger())
+app.use('*', secureHeaders())
+
+// Rate Limiter: 100 requests per minute per IP
+app.use('*', rateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    limit: 100,
+    message: 'Too many requests, please try again later.',
+    keyGenerator: (c) => c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1'
+}))
+
 app.use('*', cors({
-    origin: (origin) => origin,
+    origin: (origin) => {
+        // Allow localhost for development
+        if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) return origin;
+        // Allow production domain
+        if (origin.endsWith('komida.site') || origin.endsWith('vercel.app')) return origin;
+        // Block others
+        return null;
+    },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
 }))
 
 app.get('/health', (c) => {
@@ -52,27 +77,34 @@ app.use('*', async (c, next) => {
 });
 
 // Auth Routes
-app.post('/api/auth/register', async (c) => {
+app.post('/api/auth/register', zValidator('json', registerSchema), async (c) => {
     try {
-        const body = await c.req.json();
+        const body = c.req.valid('json');
         const { username, password } = body;
+        const role = body.role || 'user';
 
-        if (!username || !password) {
-            return c.json({ error: 'Username and password are required' }, 400);
-        }
+        // Validated by Zod
 
-        const user = await userService.createUser(username, password, 'user');
+        const user = await userService.createUser(username, password, role);
         const token = await createToken({ id: user.id, username: user.username, role: user.role });
 
-        return c.json({ user, token });
+        setCookie(c, 'auth_token', token, {
+            httpOnly: true,
+            secure: false, // Set to true in production
+            sameSite: 'Lax',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/'
+        });
+
+        return c.json({ user });
     } catch (e: any) {
         return c.json({ error: e.message }, 400);
     }
 });
 
-app.post('/api/auth/login', async (c) => {
+app.post('/api/auth/login', zValidator('json', loginSchema), async (c) => {
     try {
-        const body = await c.req.json();
+        const body = c.req.valid('json');
         const { username, password } = body;
 
         const user = await userService.getUserByUsername(username);
@@ -82,22 +114,43 @@ app.post('/api/auth/login', async (c) => {
 
         const token = await createToken({ id: user.id, username: user.username, role: user.role });
 
+        setCookie(c, 'auth_token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/'
+        });
+
         // Remove password from response
         const { password: _, ...userWithoutPass } = user;
-        return c.json({ user: userWithoutPass, token });
+        return c.json({ user: userWithoutPass });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
     }
 });
 
+app.post('/api/auth/logout', (c) => {
+    deleteCookie(c, 'auth_token');
+    return c.json({ success: true });
+});
+
 // User Auth Middleware (any authenticated user)
 app.use('/api/user/*', async (c, next) => {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = getCookie(c, 'auth_token');
+
+    // Fallback to Header for non-browser clients
+    if (!token) {
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+
+    if (!token) {
         return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const token = authHeader.split(' ')[1];
     const payload = await verifyToken(token);
 
     if (!payload) {
@@ -171,12 +224,20 @@ app.put('/api/user/password', async (c) => {
 
 // Admin Middleware
 app.use('/api/admin/*', async (c, next) => {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = getCookie(c, 'auth_token');
+
+    // Fallback to Header
+    if (!token) {
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+
+    if (!token) {
         return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const token = authHeader.split(' ')[1];
     const payload = await verifyToken(token);
 
 
@@ -205,11 +266,10 @@ app.get('/api/admin/users', async (c) => {
     }
 });
 
-app.post('/api/admin/users', async (c) => {
+app.post('/api/admin/users', zValidator('json', registerSchema), async (c) => {
     try {
-        const body = await c.req.json();
+        const body = c.req.valid('json');
         const { username, password, role } = body;
-        if (!username || !password) return c.json({ error: 'Username and password required' }, 400);
 
         const user = await userService.createUser(username, password, role);
         return c.json(user);
@@ -218,12 +278,11 @@ app.post('/api/admin/users', async (c) => {
     }
 });
 
-app.put('/api/admin/users/:id', async (c) => {
+app.put('/api/admin/users/:id', zValidator('json', userUpdateSchema), async (c) => {
     const id = Number(c.req.param('id'));
     try {
-        const body = await c.req.json();
+        const body = c.req.valid('json');
         const user = await adminService.updateUser(id, body);
-        if (!user) return c.json({ error: 'User not found or no changes' }, 404);
         return c.json(user);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
@@ -276,10 +335,10 @@ app.get('/api/admin/manga/:id', async (c) => {
     }
 });
 
-app.put('/api/admin/manga/:id', async (c) => {
+app.put('/api/admin/manga/:id', zValidator('json', mangaUpdateSchema), async (c) => {
     const id = Number(c.req.param('id'));
     try {
-        const body = await c.req.json();
+        const body = c.req.valid('json');
         const manga = await adminService.updateManga(id, body);
         return c.json(manga);
     } catch (e: any) {
@@ -403,13 +462,19 @@ app.get('/api/comments', async (c) => {
     }
 });
 
-app.post('/api/comments', async (c) => {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
+    let token = getCookie(c, 'auth_token');
+    if (!token) {
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        }
+    }
+
+    if (!token) {
         return c.json({ error: 'Unauthorized' }, 401);
     }
 
-    const token = authHeader.split(' ')[1];
     const payload = await verifyToken(token);
 
     if (!payload) {
@@ -417,14 +482,11 @@ app.post('/api/comments', async (c) => {
     }
 
     try {
-        const body = await c.req.json();
-        const { slug, chapter, content } = body;
+        const body = c.req.valid('json');
+        const { slug, chapter_slug, content } = body;
+        // Zod validates required fields
 
-        if (!slug || !content) {
-            return c.json({ error: 'Slug and content are required' }, 400);
-        }
-
-        const comment = await commentService.createComment(payload.id, slug, content, chapter);
+        const comment = await commentService.createComment(payload.id, slug, content, chapter_slug);
         const userProfile = await userService.getUserById(payload.id);
 
         // Return with username for immediate display
@@ -736,8 +798,7 @@ app.get('/api/manga/slug/:slug', async (c) => {
     }
 });
 
-import sharp from 'sharp';
-import { encryptData, decryptData } from './utils/secure';
+// Imports moved to top
 
 // --- Memory Optimizations for Railway Free Tier (512MB RAM) ---
 sharp.cache(false);        // Disable Sharp's internal image cache
@@ -816,10 +877,11 @@ app.get('/api/image/proxy', async (c) => {
     }
 });
 
-console.log(`Server is running at 0.0.0.0:${process.env.PORT || 3001}`);
+
+console.log(`Server is running at 0.0.0.0:${process.env.PORT || 3005}`);
 
 export default {
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || 3005,
     hostname: "0.0.0.0",
     fetch: app.fetch,
 }

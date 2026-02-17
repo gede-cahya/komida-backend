@@ -54,6 +54,20 @@ export async function initDB() {
         console.log('Migrated: users.avatar_url');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
+      // Add is_banned column
+      try {
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE`;
+        console.log('Migrated: users.is_banned');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+      // Also ensure manga table has new columns if any
+      try {
+        await queryClient`ALTER TABLE manga ADD COLUMN IF NOT EXISTS is_trending BOOLEAN DEFAULT FALSE`;
+        await queryClient`ALTER TABLE manga ADD COLUMN IF NOT EXISTS popularity INTEGER DEFAULT 0`;
+        console.log('Migrated: manga columns');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+
       await queryClient.end();
     } catch (err: any) {
       console.error('Migration failed:', err);
