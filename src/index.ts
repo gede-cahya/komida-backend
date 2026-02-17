@@ -17,7 +17,16 @@ app.use('*', cors({
 }))
 
 app.get('/health', (c) => {
-    return c.json({ status: 'ok', uptime: process.uptime() })
+    const mem = process.memoryUsage();
+    return c.json({
+        status: 'ok',
+        uptime: process.uptime(),
+        memory: {
+            rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
+            heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+            heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+        }
+    })
 })
 
 import { mangaService } from './service/mangaService';
@@ -565,9 +574,23 @@ app.get('/api/manga/slug/:slug', async (c) => {
 import sharp from 'sharp';
 import { encryptData, decryptData } from './utils/secure';
 
+// --- Memory Optimizations for Railway Free Tier (512MB RAM) ---
+sharp.cache(false);        // Disable Sharp's internal image cache
+sharp.concurrency(1);      // Limit Sharp to 1 processing thread
+
+// Semaphore to limit concurrent image proxy requests
+let activeProxyRequests = 0;
+const MAX_CONCURRENT_PROXY = 3;
+
 app.get('/api/image/proxy', async (c) => {
     const url = c.req.query('url');
     if (!url) return c.text('Missing url', 400);
+
+    // Reject if too many concurrent requests (prevent OOM)
+    if (activeProxyRequests >= MAX_CONCURRENT_PROXY) {
+        return c.text('Server busy, retry later', 503);
+    }
+    activeProxyRequests++;
 
     const source = c.req.query('source');
 
@@ -593,11 +616,8 @@ app.get('/api/image/proxy', async (c) => {
         }
 
         const contentType = response.headers.get('content-type');
-        console.log(`[Proxy] Fetching: ${url}`);
-        console.log(`[Proxy] Status: ${response.status}, Content-Type: ${contentType}`);
 
         const arrayBuffer = await response.arrayBuffer();
-        console.log(`[Proxy] Buffer size: ${arrayBuffer.byteLength} bytes`);
 
         if (arrayBuffer.byteLength === 0) {
             return c.text('Empty response from upstream', 502);
@@ -605,23 +625,22 @@ app.get('/api/image/proxy', async (c) => {
 
         let outputBuffer: ArrayBuffer | Buffer = arrayBuffer;
 
-        // SKIP Sharp for AVIF or if buffer is already optimized
+        // SKIP Sharp for AVIF or GIF (can't optimize well)
         if (contentType && (contentType.includes('avif') || contentType.includes('gif'))) {
-            console.log(`[Proxy] Skipping Sharp for ${contentType}`);
             c.header('Content-Type', contentType);
+            c.header('Cache-Control', 'public, max-age=31536000');
             return c.body(outputBuffer as any);
         }
 
         try {
-            outputBuffer = await sharp(arrayBuffer)
-                .resize({ width: 800, withoutEnlargement: true })
-                .webp({ quality: 60 })
+            outputBuffer = await sharp(Buffer.from(arrayBuffer))
+                .resize({ width: 720, withoutEnlargement: true })  // Smaller resize target
+                .webp({ quality: 50 })  // Lower quality = less memory + smaller output
                 .toBuffer();
 
             c.header('Content-Type', 'image/webp');
         } catch (sharpError) {
-            console.warn(`[Proxy] Sharp optimization failed for ${url}, returning original. Error:`, sharpError);
-            // Fallback to original content type or default
+            console.warn(`[Proxy] Sharp failed for ${url}, returning original`);
             c.header('Content-Type', contentType || 'application/octet-stream');
             outputBuffer = arrayBuffer;
         }
@@ -632,6 +651,8 @@ app.get('/api/image/proxy', async (c) => {
     } catch (e: any) {
         console.error('Proxy Error:', e);
         return c.text('Proxy error', 500);
+    } finally {
+        activeProxyRequests--;
     }
 });
 

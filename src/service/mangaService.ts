@@ -3,7 +3,7 @@ import { manga as mangaTable } from '../db/schema';
 import { eq, and, like, ilike, desc, sql } from 'drizzle-orm';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
-import { ShinigamiBrowserScraper } from '../scrapers/providers/shinigami-browser';
+
 import { SoftkomikScraper } from '../scrapers/providers/softkomik';
 import type { ScrapedManga, ScraperProvider } from '../scrapers/types';
 
@@ -14,7 +14,7 @@ export class MangaService {
         this.scrapers = [
             new KiryuuScraper(),
             new ManhwaIndoScraper(),
-            // new ShinigamiBrowserScraper(),
+
             new SoftkomikScraper(),
         ];
     }
