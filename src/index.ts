@@ -618,6 +618,17 @@ app.get('/', (c) => {
     return c.json({ message: 'Welcome to Komida Backend' })
 })
 
+
+// Debug endpoint to check headers and path
+app.get('/api/debug', (c) => {
+    return c.json({
+        path: c.req.path,
+        url: c.req.url,
+        headers: c.req.header(),
+        query: c.req.query()
+    });
+});
+
 // Health moved to top
 
 app.get('/api/trending', async (c) => {
