@@ -1,6 +1,8 @@
 import { db } from '../db';
 import { users as usersTable } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
+
+const DEFAULT_AVATAR = "https://ui-avatars.com/api/?background=random";
 
 export class UserService {
 
@@ -10,7 +12,8 @@ export class UserService {
     }
 
     // Verify password helper
-    async verifyPassword(password: string, hash: string): Promise<boolean> {
+    async verifyPassword(password: string, hash: string, is_banned?: boolean | null): Promise<boolean> {
+        if (is_banned) throw new Error('Account is banned');
         return await Bun.password.verify(password, hash);
     }
 
@@ -50,6 +53,7 @@ export class UserService {
             email: usersTable.email,
             display_name: usersTable.display_name,
             avatar_url: usersTable.avatar_url,
+            is_banned: usersTable.is_banned,
             created_at: usersTable.created_at
         })
             .from(usersTable)

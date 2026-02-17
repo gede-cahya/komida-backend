@@ -76,7 +76,7 @@ app.post('/api/auth/login', async (c) => {
         const { username, password } = body;
 
         const user = await userService.getUserByUsername(username);
-        if (!user || !(await userService.verifyPassword(password, user.password))) {
+        if (!user || !(await userService.verifyPassword(password, user.password, user.is_banned))) {
             return c.json({ error: 'Invalid credentials' }, 401);
         }
 
@@ -265,6 +265,40 @@ app.delete('/api/admin/manga/:id', async (c) => {
     }
 });
 
+app.get('/api/admin/manga/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const manga = await adminService.getMangaDetail(id);
+        if (!manga) return c.json({ error: 'Manga not found' }, 404);
+        return c.json(manga);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/manga/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const manga = await adminService.updateManga(id, body);
+        return c.json(manga);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/manga/:id/chapter/:slug', async (c) => {
+    const id = Number(c.req.param('id'));
+    const slug = c.req.param('slug');
+    try {
+        const chapters = await adminService.deleteChapter(id, slug);
+        if (!chapters) return c.json({ error: 'Chapter not found or failed to delete' }, 404);
+        return c.json({ success: true, chapters });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 app.post('/api/admin/manga/search', async (c) => {
     try {
         const body = await c.req.json();
@@ -300,6 +334,55 @@ app.post('/api/admin/manga/update-all', async (c) => {
         return c.json(result);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Admin Comment Management ---
+
+app.get('/api/admin/comments', async (c) => {
+    const page = Number(c.req.query('page')) || 1;
+    const limit = Number(c.req.query('limit')) || 20;
+    try {
+        const result = await adminService.getAllComments(page, limit);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/comments/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteComment(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- System Health ---
+
+app.get('/api/admin/system/health', async (c) => {
+    try {
+        // Check DB
+        const start = performance.now();
+        await db.execute(sql`SELECT 1`);
+        const dbLatency = Math.round(performance.now() - start);
+
+        return c.json({
+            status: 'online',
+            database: { status: 'connected', latency: `${dbLatency}ms` },
+            scrapers: { status: 'idle', message: 'Scrapers run on-demand' }, // Placeholder
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            timestamp: new Date().toISOString()
+        });
+    } catch (e: any) {
+        return c.json({
+            status: 'degraded',
+            database: { status: 'error', message: e.message },
+            timestamp: new Date().toISOString()
+        }, 500);
     }
 });
 

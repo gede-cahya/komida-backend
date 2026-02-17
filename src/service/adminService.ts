@@ -1,6 +1,6 @@
 import { db } from '../db';
-import { manga as mangaTable, users as usersTable } from '../db/schema';
-import { eq, like, desc, count } from 'drizzle-orm';
+import { manga as mangaTable, users as usersTable, comments as commentsTable } from '../db/schema';
+import { eq, like, desc, count, and } from 'drizzle-orm';
 import { mangaService } from './mangaService';
 
 export class AdminService {
@@ -16,6 +16,7 @@ export class AdminService {
             id: usersTable.id,
             username: usersTable.username,
             role: usersTable.role,
+            is_banned: usersTable.is_banned,
             created_at: usersTable.created_at
         })
             .from(usersTable)
@@ -39,11 +40,12 @@ export class AdminService {
         };
     }
 
-    async updateUser(id: number, data: { username?: string, role?: string, password?: string }) {
+    async updateUser(id: number, data: { username?: string, role?: string, password?: string, is_banned?: boolean }) {
         const updateData: any = {};
 
         if (data.username) updateData.username = data.username;
         if (data.role) updateData.role = data.role;
+        if (data.is_banned !== undefined) updateData.is_banned = data.is_banned;
         if (data.password) {
             updateData.password = await Bun.password.hash(data.password);
         }
@@ -120,6 +122,82 @@ export class AdminService {
         // Run in background, don't await
         mangaService.updateAllManga().catch(e => console.error('[UpdateAll] Background task error:', e));
         return { message: 'Update started in background' };
+    }
+
+    async getMangaDetail(id: number) {
+        const result = await db.select().from(mangaTable).where(eq(mangaTable.id, id));
+        return result[0];
+    }
+
+    async updateManga(id: number, data: any) {
+        // Prevent ID update
+        delete data.id;
+        const result = await db.update(mangaTable)
+            .set(data)
+            .where(eq(mangaTable.id, id))
+            .returning();
+        return result[0];
+    }
+
+    async deleteChapter(id: number, chapterSlug: string) {
+        const manga = await this.getMangaDetail(id);
+        if (!manga || !manga.chapters) return null;
+
+        let chapters: any[] = [];
+        try {
+            chapters = JSON.parse(manga.chapters);
+        } catch (e) {
+            console.error('Failed to parse chapters JSON', e);
+            return null;
+        }
+
+        const initialLength = chapters.length;
+        chapters = chapters.filter((c: any) => c.slug !== chapterSlug);
+
+        if (chapters.length === initialLength) return null; // Chapter not found
+
+        await db.update(mangaTable)
+            .set({ chapters: JSON.stringify(chapters) })
+            .where(eq(mangaTable.id, id));
+
+        return chapters;
+    }
+
+    // --- Comment Management ---
+
+    async getAllComments(page: number = 1, limit: number = 20) {
+        const offset = (page - 1) * limit;
+
+        const comments = await db.select({
+            id: commentsTable.id,
+            user_id: commentsTable.user_id,
+            slug: commentsTable.slug,
+            chapter_slug: commentsTable.chapter_slug,
+            content: commentsTable.content,
+            created_at: commentsTable.created_at,
+            username: usersTable.username,
+            avatar_url: usersTable.avatar_url
+        })
+            .from(commentsTable)
+            .leftJoin(usersTable, eq(commentsTable.user_id, usersTable.id))
+            .orderBy(desc(commentsTable.created_at))
+            .limit(limit)
+            .offset(offset);
+
+        const [totalResult] = await db.select({ total: count() }).from(commentsTable);
+        const total = Number(totalResult.total);
+
+        return {
+            comments,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        };
+    }
+
+    async deleteComment(id: number) {
+        await db.delete(commentsTable).where(eq(commentsTable.id, id));
     }
 }
 
