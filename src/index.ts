@@ -90,6 +90,85 @@ app.post('/api/auth/login', async (c) => {
     }
 });
 
+// User Auth Middleware (any authenticated user)
+app.use('/api/user/*', async (c, next) => {
+    const authHeader = c.req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const token = authHeader.split(' ')[1];
+    const payload = await verifyToken(token);
+
+    if (!payload) {
+        return c.json({ error: 'Invalid or expired token' }, 401);
+    }
+
+    c.set('userId' as any, payload.id);
+    await next();
+});
+
+// --- User Profile Routes ---
+
+app.get('/api/user/profile', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const profile = await userService.getUserProfile(userId);
+
+        if (!profile) {
+            return c.json({ error: 'User not found' }, 404);
+        }
+
+        return c.json({ user: profile });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/user/profile', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const body = await c.req.json();
+        const { display_name, email, avatar_url } = body;
+
+        // Validate avatar size (max ~300KB base64)
+        if (avatar_url && avatar_url.length > 400000) {
+            return c.json({ error: 'Avatar image too large. Max 300KB.' }, 400);
+        }
+
+        const updated = await userService.updateProfile(userId, {
+            display_name,
+            email,
+            avatar_url
+        });
+
+        return c.json({ user: updated });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
+app.put('/api/user/password', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const body = await c.req.json();
+        const { oldPassword, newPassword } = body;
+
+        if (!oldPassword || !newPassword) {
+            return c.json({ error: 'Old password and new password are required' }, 400);
+        }
+
+        if (newPassword.length < 6) {
+            return c.json({ error: 'New password must be at least 6 characters' }, 400);
+        }
+
+        await userService.changePassword(userId, oldPassword, newPassword);
+        return c.json({ message: 'Password changed successfully' });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
 // Admin Middleware
 app.use('/api/admin/*', async (c, next) => {
     const authHeader = c.req.header('Authorization');
