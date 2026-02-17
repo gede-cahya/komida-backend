@@ -5,7 +5,7 @@ import { db, initDB } from './db'
 import { manga as mangaTable, siteVisits, mangaViews } from './db/schema'
 import { eq, desc, count, sql } from 'drizzle-orm'
 
-initDB();
+await initDB();
 console.log('Database initialized');
 const app = new Hono()
 

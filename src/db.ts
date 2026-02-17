@@ -27,10 +27,37 @@ if (DATABASE_URL) {
 export const legacyDb = sqlite;
 
 // Initialize database schema (legacy way + ensure tables exist)
-export function initDB() {
+// Initialize database schema (legacy way + ensure tables exist)
+export async function initDB() {
   if (DATABASE_URL) {
-    console.log('Note: Using Supabase. Schema should be managed via migrations or dashboard.');
-    // In a real app, we'd run migrations here.
+    console.log('Using Supabase PostgreSQL. Running auto-migration for missing columns...');
+
+    // Auto-migration for new user columns
+    try {
+      const queryClient = postgres(DATABASE_URL);
+
+      // Add email column
+      try {
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
+        console.log('Migrated: users.email');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+      // Add display_name column
+      try {
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT`;
+        console.log('Migrated: users.display_name');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+      // Add avatar_url column
+      try {
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`;
+        console.log('Migrated: users.avatar_url');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+      await queryClient.end();
+    } catch (err: any) {
+      console.error('Migration failed:', err);
+    }
     return;
   }
 
