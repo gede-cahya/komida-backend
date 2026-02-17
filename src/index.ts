@@ -90,8 +90,8 @@ app.post('/api/auth/register', zValidator('json', registerSchema), async (c) => 
 
         setCookie(c, 'auth_token', token, {
             httpOnly: true,
-            secure: false, // Set to true in production
-            sameSite: 'Lax',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
             maxAge: 60 * 60 * 24 * 7, // 7 days
             path: '/'
         });
@@ -116,8 +116,8 @@ app.post('/api/auth/login', zValidator('json', loginSchema), async (c) => {
 
         setCookie(c, 'auth_token', token, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
             maxAge: 60 * 60 * 24 * 7, // 7 days
             path: '/'
         });

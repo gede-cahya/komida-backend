@@ -1,0 +1,263 @@
+$ bun run --watch src/index.ts
+Connecting to PostgreSQL (Supabase)...
+Using Supabase PostgreSQL. Running auto-migration for missing columns...
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"email\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.email
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"display_name\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.display_name
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"avatar_url\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.avatar_url
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_banned\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.is_banned
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_trending\" of relation \"manga\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"popularity\" of relation \"manga\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: manga columns
+Database initialized
+Server is running at 0.0.0.0:3005
+Started development server: http://0.0.0.0:3005
+<-- OPTIONS /api/auth/login
+--> OPTIONS /api/auth/login [32m204[0m 1ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [32m200[0m 549ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 318ms
+<-- GET /api/popular
+--> GET /api/recent [32m200[0m 387ms
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 139ms
+--> GET /api/popular [32m200[0m 271ms
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 380ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 72ms
+<-- OPTIONS /api/auth/register
+--> OPTIONS /api/auth/register [32m204[0m 1ms
+<-- POST /api/auth/register
+--> POST /api/auth/register [32m200[0m 257ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 265ms
+--> GET /api/recent [32m200[0m 264ms
+<-- GET /api/popular
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 134ms
+--> GET /api/popular [32m200[0m 166ms
+--> GET /api/trending [32m200[0m 871ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 752ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 69ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/recent [32m200[0m 200ms
+--> GET /api/popular [32m200[0m 235ms
+--> GET /api/user/profile [33m401[0m 364ms
+--> GET /api/trending [32m200[0m 782ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 69ms
+<-- OPTIONS /api/auth/login
+--> OPTIONS /api/auth/login [32m204[0m 0ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [32m200[0m 296ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 446ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 522ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 173ms
+--> GET /api/trending [32m200[0m 765ms
+<-- GET /api/trending
+--> GET /api/recent [32m200[0m 336ms
+--> GET /api/trending [32m200[0m 318ms
+<-- OPTIONS /api/user/profile
+--> OPTIONS /api/user/profile [32m204[0m 0ms
+<-- PUT /api/user/profile
+--> PUT /api/user/profile [33m401[0m 68ms
+<-- GET /api/manga/slug/reborn-as-the-heavenly-demon
+--> GET /api/manga/slug/reborn-as-the-heavenly-demon [32m200[0m 245ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+<-- GET /api/manga/slug/reborn-as-the-heavenly-demon
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 67ms
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 168ms
+--> GET /api/manga/slug/reborn-as-the-heavenly-demon [32m200[0m 285ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 337ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 468ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 68ms
+<-- OPTIONS /api/auth/login
+--> OPTIONS /api/auth/login [32m204[0m 0ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [32m200[0m 2s
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 200ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 243ms
+<-- GET /api/popular
+--> GET /api/recent [32m200[0m 143ms
+--> GET /api/popular [32m200[0m 627ms
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 408ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 69ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 83ms
+--> GET /api/recent [32m200[0m 214ms
+--> GET /api/popular [32m200[0m 284ms
+--> GET /api/trending [32m200[0m 468ms
+<-- GET /api/manga/slug/reborn-as-the-heavenly-demon
+--> GET /api/manga/slug/reborn-as-the-heavenly-demon [32m200[0m 241ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+<-- GET /api/manga/slug/reborn-as-the-heavenly-demon
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 67ms
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 135ms
+--> GET /api/manga/slug/reborn-as-the-heavenly-demon [32m200[0m 239ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 524ms
+<-- GET /api/comments?slug=reborn-as-the-heavenly-demon
+--> GET /api/comments?slug=reborn-as-the-heavenly-demon [32m200[0m 709ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m401[0m 139ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [32m200[0m 287ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 200ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 263ms
+<-- GET /api/popular
+--> GET /api/recent [32m200[0m 138ms
+--> GET /api/popular [32m200[0m 235ms
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 810ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 139ms
+<-- POST /api/auth/register
+--> POST /api/auth/register [32m200[0m 262ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 216ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 249ms
+<-- GET /api/popular
+--> GET /api/recent [32m200[0m 137ms
+--> GET /api/trending [32m200[0m 456ms
+<-- GET /api/trending
+--> GET /api/popular [32m200[0m 494ms
+--> GET /api/trending [32m200[0m 722ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 137ms
+<-- GET /api/admin/stats/visits?period=day
+<-- GET /api/admin/stats/popular?period=day
+<-- GET /api/user/profile
+--> GET /api/admin/stats/popular?period=day [33m403[0m 67ms
+--> GET /api/admin/stats/visits?period=day [33m403[0m 70ms
+--> GET /api/user/profile [32m200[0m 136ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 233ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 265ms
+<-- GET /api/popular
+--> GET /api/recent [32m200[0m 151ms
+--> GET /api/popular [32m200[0m 269ms
+--> GET /api/trending [32m200[0m 755ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 346ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 249ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 197ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m401[0m 309ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [32m200[0m 282ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+--> GET /api/recent [32m200[0m 249ms
+<-- GET /api/recent
+--> GET /api/popular [32m200[0m 291ms
+<-- GET /api/popular
+--> GET /api/trending [32m200[0m 770ms
+<-- GET /api/trending
+--> GET /api/recent [32m200[0m 1s
+--> GET /api/trending [32m200[0m 596ms
+--> GET /api/popular [32m200[0m 2s
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m400[0m 68ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m401[0m 298ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m401[0m 286ms
+<-- POST /api/auth/login
+--> POST /api/auth/login [33m400[0m 68ms
