@@ -62,9 +62,15 @@ export async function initDB() {
 
       // Also ensure manga table has new columns if any
       try {
-        await queryClient`ALTER TABLE manga ADD COLUMN IF NOT EXISTS is_trending BOOLEAN DEFAULT FALSE`;
         await queryClient`ALTER TABLE manga ADD COLUMN IF NOT EXISTS popularity INTEGER DEFAULT 0`;
         console.log('Migrated: manga columns');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
+      // Add comments columns
+      try {
+        await queryClient`ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_spoiler BOOLEAN DEFAULT FALSE`;
+        await queryClient`ALTER TABLE comments ADD COLUMN IF NOT EXISTS media_url TEXT`;
+        console.log('Migrated: comments columns');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
 

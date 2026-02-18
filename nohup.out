@@ -261,3 +261,186 @@ Started development server: http://0.0.0.0:3005
 --> POST /api/auth/login [33m401[0m 286ms
 <-- POST /api/auth/login
 --> POST /api/auth/login [33m400[0m 68ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 1s
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 234ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 431ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 664ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 2s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 2s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 733ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 736ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 757ms
+<-- HEAD /api/trending
+--> HEAD /api/trending [32m200[0m 661ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 728ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 661ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 699ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 655ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 662ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 591ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 637ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 302ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 169ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 168ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 169ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 169ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 564ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 591ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 600ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 563ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 577ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 108ms
+--> GET /api/popular [32m200[0m 303ms
+--> GET /api/recent [32m200[0m 369ms
+--> GET /api/trending [32m200[0m 611ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 67ms
+--> GET /api/recent [32m200[0m 201ms
+--> GET /api/popular [32m200[0m 239ms
+--> GET /api/trending [32m200[0m 563ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/user/profile
+<-- GET /api/recent
+--> GET /api/user/profile [33m401[0m 90ms
+--> GET /api/popular [32m200[0m 273ms
+--> GET /api/recent [32m200[0m 292ms
+--> GET /api/trending [32m200[0m 648ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 68ms
+--> GET /api/recent [32m200[0m 204ms
+--> GET /api/popular [32m200[0m 234ms
+--> GET /api/trending [32m200[0m 676ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 67ms
+--> GET /api/recent [32m200[0m 201ms
+--> GET /api/popular [32m200[0m 236ms
+--> GET /api/trending [32m200[0m 597ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 959ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 79ms
+--> GET /api/recent [32m200[0m 213ms
+--> GET /api/popular [32m200[0m 248ms
+--> GET /api/trending [32m200[0m 887ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 578ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 268ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 442ms
+--> GET /api/recent [32m200[0m 580ms
+--> GET /api/popular [32m200[0m 670ms
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 68ms
+--> GET /api/recent [32m200[0m 278ms
+--> GET /api/popular [32m200[0m 355ms
+--> GET /api/trending [32m200[0m 659ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 834ms
+<-- GET /api/popular
+<-- GET /api/trending
+<-- GET /api/recent
+<-- GET /api/user/profile
+--> GET /api/user/profile [33m401[0m 671ms
+--> GET /api/recent [32m200[0m 701ms
+--> GET /api/popular [32m200[0m 924ms
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 600ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 654ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 665ms
+<-- GET /favicon.ico
+--> GET /favicon.ico [33m404[0m 68ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 783ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 1s
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 855ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 731ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 606ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 824ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 742ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 595ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 265ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 242ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 200ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 211ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 237ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 534ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 890ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 719ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 589ms
+<-- GET /api/trending
+--> GET /api/trending [32m200[0m 764ms
+error: script "dev" was terminated by signal SIGHUP (Terminal hung up)

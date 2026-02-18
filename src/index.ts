@@ -11,6 +11,9 @@ import { zValidator } from '@hono/zod-validator'
 import { loginSchema, registerSchema, commentSchema, userUpdateSchema, mangaUpdateSchema } from './zod/schemas'
 import sharp from 'sharp';
 import { encryptData, decryptData } from './utils/secure';
+import { serveStatic } from 'hono/bun';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 
 await initDB();
 console.log('Database initialized');
@@ -18,6 +21,7 @@ const app = new Hono()
 
 app.use('*', logger())
 app.use('*', secureHeaders())
+app.use('/uploads/*', serveStatic({ root: './public' }))
 
 // Rate Limiter: 100 requests per minute per IP
 app.use('*', rateLimiter({
@@ -445,6 +449,27 @@ app.get('/api/admin/system/health', async (c) => {
     }
 });
 
+// Upload Route
+app.post('/api/upload', async (c) => {
+    try {
+        const body = await c.req.parseBody();
+        const file = body['file'];
+        if (file instanceof File) {
+            const buffer = await file.arrayBuffer();
+            const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const uploadDir = join(import.meta.dir, '../public/uploads');
+
+            await mkdir(uploadDir, { recursive: true });
+            await writeFile(join(uploadDir, fileName), Buffer.from(buffer));
+
+            return c.json({ url: `/uploads/${fileName}` });
+        }
+        return c.json({ error: 'No file uploaded' }, 400);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // Comment Routes
 app.get('/api/comments', async (c) => {
     const slug = c.req.query('slug');
@@ -483,10 +508,10 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
 
     try {
         const body = c.req.valid('json');
-        const { slug, chapter_slug, content } = body;
+        const { slug, chapter_slug, content, is_spoiler, media_url } = body;
         // Zod validates required fields
 
-        const comment = await commentService.createComment(payload.id, slug, content, chapter_slug);
+        const comment = await commentService.createComment(payload.id, slug, content, chapter_slug, is_spoiler, media_url);
         const userProfile = await userService.getUserById(payload.id);
 
         // Return with username for immediate display

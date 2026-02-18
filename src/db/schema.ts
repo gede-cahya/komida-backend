@@ -65,5 +65,7 @@ export const comments = pgTable('comments', {
     slug: text('slug').notNull(),
     chapter_slug: text('chapter_slug'),
     content: text('content').notNull(),
+    is_spoiler: boolean('is_spoiler').default(false),
+    media_url: text('media_url'),
     created_at: timestamp('created_at').defaultNow(),
 });

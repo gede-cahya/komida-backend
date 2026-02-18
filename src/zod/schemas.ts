@@ -38,4 +38,6 @@ export const commentSchema = z.object({
     content: z.string().min(1).max(1000),
     slug: z.string().min(1),
     chapter_slug: z.string().optional(),
+    is_spoiler: z.boolean().optional(),
+    media_url: z.string().optional(),
 });

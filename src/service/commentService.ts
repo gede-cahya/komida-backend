@@ -13,6 +13,8 @@ export class CommentService {
             chapter_slug: commentsTable.chapter_slug,
             content: commentsTable.content,
             created_at: commentsTable.created_at,
+            is_spoiler: commentsTable.is_spoiler,
+            media_url: commentsTable.media_url,
             username: usersTable.username,
             role: usersTable.role,
             display_name: usersTable.display_name,
@@ -31,12 +33,14 @@ export class CommentService {
         return await query;
     }
 
-    async createComment(userId: number, slug: string, content: string, chapterSlug?: string) {
+    async createComment(userId: number, slug: string, content: string, chapterSlug?: string, isSpoiler: boolean = false, mediaUrl?: string) {
         const results = await db.insert(commentsTable).values({
             user_id: userId,
             slug,
             chapter_slug: chapterSlug || null,
-            content
+            content,
+            is_spoiler: isSpoiler,
+            media_url: mediaUrl || null
         }).returning();
 
         return results[0];
