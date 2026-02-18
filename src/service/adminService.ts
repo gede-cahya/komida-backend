@@ -174,6 +174,8 @@ export class AdminService {
             slug: commentsTable.slug,
             chapter_slug: commentsTable.chapter_slug,
             content: commentsTable.content,
+            is_spoiler: commentsTable.is_spoiler,
+            media_url: commentsTable.media_url,
             created_at: commentsTable.created_at,
             username: usersTable.username,
             avatar_url: usersTable.avatar_url

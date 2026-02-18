@@ -100,7 +100,7 @@ app.post('/api/auth/register', zValidator('json', registerSchema), async (c) => 
             path: '/'
         });
 
-        return c.json({ user });
+        return c.json({ user, token, success: true });
     } catch (e: any) {
         return c.json({ error: e.message }, 400);
     }
@@ -126,9 +126,9 @@ app.post('/api/auth/login', zValidator('json', loginSchema), async (c) => {
             path: '/'
         });
 
-        // Remove password from response
+        // Remove password from section
         const { password: _, ...userWithoutPass } = user;
-        return c.json({ user: userWithoutPass });
+        return c.json({ user: userWithoutPass, token });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
     }
@@ -511,7 +511,13 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
         const { slug, chapter_slug, content, is_spoiler, media_url } = body;
         // Zod validates required fields
 
-        const comment = await commentService.createComment(payload.id, slug, content, chapter_slug, is_spoiler, media_url);
+        const comment = await commentService.createComment(
+            payload.id,
+            slug,
+            content,
+            chapter_slug,
+            Boolean(is_spoiler),
+            media_url ?? null);
         const userProfile = await userService.getUserById(payload.id);
 
         // Return with username for immediate display
@@ -528,6 +534,123 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
         return c.json({ error: e.message }, 500);
     }
 });
+
+// Delete Comment (User or Admin)
+app.delete('/api/comments/:id', async (c) => {
+    let token = getCookie(c, 'auth_token');
+
+    if (!token) {
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else {
+            // Fallback to 'token' cookie if auth_token is missing (legacy/dev)
+            const cookieHeader = c.req.header('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {} as any);
+                token = cookies['token'];
+            }
+        }
+    }
+
+    if (!token) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const payload = await verifyToken(token);
+    if (!payload) {
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const commentId = Number(c.req.param('id'));
+    if (isNaN(commentId)) {
+        return c.json({ error: 'Invalid comment ID' }, 400);
+    }
+
+    try {
+        // If admin, pass undefined for userId to bypass ownership check (or handle in service)
+        // But my service logic: if userId is provided, it checks ownership.
+        // If I want admin to delete ANY, I should NOT pass userId if role is admin.
+
+        const userIdToCheck = payload.role === 'admin' ? undefined : payload.id;
+
+        await commentService.deleteComment(commentId, userIdToCheck);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// Update Comment
+app.put('/api/comments/:id', async (c) => {
+    let token = getCookie(c, 'auth_token');
+
+    if (!token) {
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else {
+            const cookieHeader = c.req.header('Cookie');
+            if (cookieHeader) {
+                const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {} as any);
+                token = cookies['token'];
+            }
+        }
+    }
+
+    if (!token) {
+        return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const payload = await verifyToken(token);
+    if (!payload) {
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+
+    const commentId = Number(c.req.param('id'));
+    if (isNaN(commentId)) {
+        return c.json({ error: 'Invalid comment ID' }, 400);
+    }
+
+    try {
+        const body = await c.req.json();
+        const { content, is_spoiler, media_url } = body;
+
+        if (!content && !media_url) {
+            return c.json({ error: 'Content or media is required' }, 400);
+        }
+
+        const updated = await commentService.updateComment(
+            commentId,
+            payload.id,
+            content,
+            Boolean(is_spoiler),
+            media_url
+        );
+
+        // Return full comment structure (mocking user details since only owner edits own comment)
+        return c.json({
+            comment: {
+                ...updated,
+                username: payload.username, // usage of token payload for immediate response
+                role: payload.role,
+                // display_name/avatar might be missing from token payload depending on implementation
+                // For now, frontend updates list or refetches.
+            }
+        });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 
 // Admin Dashboard Data
 app.get('/api/admin/dashboard', async (c) => {

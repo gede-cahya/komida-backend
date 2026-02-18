@@ -30,7 +30,11 @@ export class UserService {
             return results[0];
         } catch (e: any) {
             // PostgreSQL unique constraint error or SQLite unique constraint error
-            if (e.message.includes('UNIQUE constraint failed') || e.message.includes('duplicate key value')) {
+            // Drizzle/Postgres.js might wrap actual error in .cause
+            if (e.message.includes('UNIQUE constraint failed') ||
+                e.message.includes('duplicate key value') ||
+                (e.cause && (e.cause.code === '23505' || e.cause.message?.includes('duplicate key value')))
+            ) {
                 throw new Error('Username already exists');
             }
             throw e;
@@ -91,7 +95,10 @@ export class UserService {
                 });
             return results[0];
         } catch (e: any) {
-            if (e.message.includes('duplicate key value') || e.message.includes('UNIQUE constraint')) {
+            if (e.message.includes('duplicate key value') ||
+                e.message.includes('UNIQUE constraint') ||
+                (e.cause && (e.cause.code === '23505' || e.cause.message?.includes('duplicate key value')))
+            ) {
                 throw new Error('Email already in use');
             }
             throw e;

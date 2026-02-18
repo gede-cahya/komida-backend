@@ -1,0 +1,88 @@
+Connecting to PostgreSQL (Supabase)...
+Using Supabase PostgreSQL. Running auto-migration for missing columns...
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"email\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.email
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"display_name\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.display_name
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"avatar_url\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.avatar_url
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_banned\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.is_banned
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"popularity\" of relation \"manga\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: manga columns
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_spoiler\" of relation \"comments\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"media_url\" of relation \"comments\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: comments columns
+Database initialized
+Server is running at 0.0.0.0:3001
+ 7 |       if (typeof entryNamespace?.default?.fetch === 'function')  {
+ 8 |         const server = Bun.serve(entryNamespace.default);
+ 9 |         console.debug(`Started ${server.development ? 'development ' : ''}server: ${server.protocol}://${server.hostname}:${server.port}`);
+10 |       }
+11 |    }, reportError);
+12 |    const server = Bun.serve(entryNamespace.default);
+                                ^
+error: Failed to start server. Is port 3001 in use?
+ syscall: "listen",
+   errno: 0,
+    code: "EADDRINUSE"
+
+      at bun:main:12:28
+
+Bun v1.3.5 (Linux x64)

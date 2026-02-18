@@ -44,15 +44,15 @@ export class AnalyticsService {
             if (isPostgres) {
                 const query = sql`
                     SELECT 
-                        m.title, 
-                        m.image, 
-                        m.source, 
+                        MAX(m.title) as title, 
+                        MAX(m.image) as image, 
+                        MAX(m.source) as source, 
                         mv.manga_slug as slug, 
                         COUNT(mv.id) as views
                     FROM manga_views mv
                     JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%'
                     WHERE mv.viewed_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
-                    GROUP BY mv.manga_slug, m.title, m.image, m.source
+                    GROUP BY mv.manga_slug
                     ORDER BY views DESC
                     LIMIT 10
                 `;
@@ -77,7 +77,8 @@ export class AnalyticsService {
                     .from(mangaViews)
                     .innerJoin(mangaTable, sql`${mangaTable.link} LIKE '%' || ${mangaViews.manga_slug} || '%'`)
                     .where(gt(mangaViews.viewed_at, timeFilter))
-                    .groupBy(mangaViews.manga_slug, mangaTable.title, mangaTable.image, mangaTable.source)
+                    .where(gt(mangaViews.viewed_at, timeFilter))
+                    .groupBy(mangaViews.manga_slug)
                     .orderBy(desc(count(mangaViews.id)))
                     .limit(10);
 

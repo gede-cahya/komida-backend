@@ -35,9 +35,9 @@ export const mangaUpdateSchema = z.object({
 });
 
 export const commentSchema = z.object({
-    content: z.string().min(1).max(1000),
+    content: z.string().max(1000).optional(),
     slug: z.string().min(1),
-    chapter_slug: z.string().optional(),
+    chapter_slug: z.string().optional().nullable(),
     is_spoiler: z.boolean().optional(),
-    media_url: z.string().optional(),
+    media_url: z.string().optional().nullable(),
 });
