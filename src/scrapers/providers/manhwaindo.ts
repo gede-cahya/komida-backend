@@ -40,8 +40,11 @@ export class ManhwaIndoScraper implements ScraperProvider {
 
                 const title = titleElement.text().trim();
                 const link = linkElement.attr('href') || '';
-                // Prefer data-src or data-original for lazy loaded images
-                const image = imgElement.attr('data-src') || imgElement.attr('data-original') || imgElement.attr('src') || '';
+                // Prefer data-src, srcset, or data-original for lazy loaded images
+                const image = imgElement.attr('data-src') ||
+                    imgElement.attr('data-original') ||
+                    imgElement.attr('srcset')?.split(',')[0]?.split(' ')[0] ||
+                    imgElement.attr('src') || '';
                 const chapter = latestChapterElement.text().trim();
                 const previous_chapter = prevChapterElement.text().trim();
 
@@ -94,6 +97,7 @@ export class ManhwaIndoScraper implements ScraperProvider {
                 const link = $(element).find('a').attr('href') || '';
                 let image = $(element).find('img').attr('data-src') ||
                     $(element).find('img').attr('data-original') ||
+                    $(element).find('img').attr('srcset')?.split(',')[0]?.split(' ')[0] ||
                     $(element).find('img').attr('src') || '';
                 const chapter = $(element).find('.epxs').text().trim();
                 const rating = parseFloat($(element).find('.numscore').text().trim()) || 0;
@@ -136,7 +140,11 @@ export class ManhwaIndoScraper implements ScraperProvider {
             const $ = cheerio.load(html);
 
             const title = $('h1').first().text().trim();
-            const image = $('.series-thumb img').attr('src') || $('.thumb img').attr('src') || '';
+            const imgEl = $('.series-thumb img').length ? $('.series-thumb img') : $('.thumb img');
+            const image = imgEl.attr('data-src') ||
+                imgEl.attr('data-original') ||
+                imgEl.attr('srcset')?.split(',')[0]?.split(' ')[0] ||
+                imgEl.attr('src') || '';
             const synopsis = $('.series-synopsys').text().trim() || $('.entry-content').text().trim();
             const genres = $('.series-genres a, .genre-info a').map((_, el) => $(el).text().trim()).get();
             const status = 'Ongoing';

@@ -780,16 +780,49 @@ app.get('/api/debug', (c) => {
 // Health moved to top
 
 app.get('/api/trending', async (c) => {
-    const trending = await db.select()
+    const subquery = db.selectDistinctOn([mangaTable.title], {
+        id: mangaTable.id,
+        title: mangaTable.title,
+        image: mangaTable.image,
+        rating: mangaTable.rating,
+        chapter: mangaTable.chapter,
+        type: mangaTable.type,
+        span: mangaTable.span,
+        is_trending: mangaTable.is_trending,
+        link: mangaTable.link,
+        source: mangaTable.source,
+        last_updated: mangaTable.last_updated
+    })
         .from(mangaTable)
-        .where(eq(mangaTable.is_trending, true));
+        .where(eq(mangaTable.is_trending, true))
+        .orderBy(mangaTable.title, desc(mangaTable.last_updated))
+        .as('sq');
+
+    const trending = await db.select()
+        .from(subquery)
+        .orderBy(desc(subquery.last_updated));
     return c.json(trending)
 })
 
 app.get('/api/recent', async (c) => {
-    const recent = await db.select()
+    const subquery = db.selectDistinctOn([mangaTable.title], {
+        id: mangaTable.id,
+        title: mangaTable.title,
+        image: mangaTable.image,
+        rating: mangaTable.rating,
+        chapter: mangaTable.chapter,
+        type: mangaTable.type,
+        source: mangaTable.source,
+        link: mangaTable.link,
+        last_updated: mangaTable.last_updated
+    })
         .from(mangaTable)
-        .orderBy(desc(mangaTable.last_updated))
+        .orderBy(mangaTable.title, desc(mangaTable.last_updated))
+        .as('sq');
+
+    const recent = await db.select()
+        .from(subquery)
+        .orderBy(desc(subquery.last_updated))
         .limit(10);
     return c.json(recent)
 })
@@ -960,27 +993,31 @@ app.get('/api/manga/slug/:slug', async (c) => {
 // Imports moved to top
 
 // --- Memory Optimizations for Railway Free Tier (512MB RAM) ---
+// Semaphore to limit concurrent image proxy requests
+let activeProxyRequests = 0;
+const MAX_CONCURRENT_PROXY = 30; // Increased from 3 to 30 to handle grid loads
+
 sharp.cache(false);        // Disable Sharp's internal image cache
 sharp.concurrency(1);      // Limit Sharp to 1 processing thread
 
-// Semaphore to limit concurrent image proxy requests
-let activeProxyRequests = 0;
-const MAX_CONCURRENT_PROXY = 3;
+// 1x1 Grey PNG for fallback
+const FALLBACK_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
 
 app.get('/api/image/proxy', async (c) => {
     const url = c.req.query('url');
     if (!url) return c.text('Missing url', 400);
 
-    // Reject if too many concurrent requests (prevent OOM)
     if (activeProxyRequests >= MAX_CONCURRENT_PROXY) {
-        return c.text('Server busy, retry later', 503);
+        // Return fallback instead of 503 to prevent Next.js image error
+        c.header('Content-Type', 'image/png');
+        c.header('Cache-Control', 'public, max-age=60');
+        return c.body(FALLBACK_IMAGE as any);
     }
     activeProxyRequests++;
 
     const source = c.req.query('source');
 
-    // Determine Referer based on source or URL
-    let referer = 'https://kiryuu03.com/'; // Default
+    let referer = 'https://kiryuu03.com/';
     if (url.includes('softkomik') || url.includes('softdevices') || source === 'Softkomik') {
         referer = 'https://softkomik.com/';
     } else if (url.includes('manhwaindo') || source === 'ManhwaIndo') {
@@ -988,45 +1025,49 @@ app.get('/api/image/proxy', async (c) => {
     }
 
     try {
-        const response = await fetch(url, {
-            headers: {
-                'Referer': referer,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        });
-
-        if (!response.ok) {
-            console.error(`[Proxy] Upstream error: ${response.status} for ${url}`);
-            return c.text('Upstream error: ' + response.status, 502);
-        }
-
-        const contentType = response.headers.get('content-type');
-
-        const arrayBuffer = await response.arrayBuffer();
-
-        if (arrayBuffer.byteLength === 0) {
-            return c.text('Empty response from upstream', 502);
-        }
-
-        let outputBuffer: ArrayBuffer | Buffer = arrayBuffer;
-
-        // SKIP Sharp for AVIF or GIF (can't optimize well)
-        if (contentType && (contentType.includes('avif') || contentType.includes('gif'))) {
-            c.header('Content-Type', contentType);
-            c.header('Cache-Control', 'public, max-age=31536000');
-            return c.body(outputBuffer as any);
-        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
 
         try {
-            outputBuffer = arrayBuffer; // BYPASS SHARP
-        } catch (sharpError) {
-            console.warn(`[Proxy] Sharp failed for ${url}, returning original`);
-            c.header('Content-Type', contentType || 'application/octet-stream');
-            outputBuffer = arrayBuffer;
-        }
+            const response = await fetch(url, {
+                headers: {
+                    'Referer': referer,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
 
-        c.header('Cache-Control', 'public, max-age=31536000');
-        return c.body(outputBuffer as any);
+            if (!response.ok) {
+                console.error(`[Proxy] Upstream error: ${response.status} for ${url}`);
+                c.header('Content-Type', 'image/png');
+                c.header('Cache-Control', 'public, max-age=60');
+                return c.body(FALLBACK_IMAGE as any);
+            }
+
+            const contentType = response.headers.get('content-type');
+            const arrayBuffer = await response.arrayBuffer();
+
+            if (arrayBuffer.byteLength === 0) throw new Error('Empty response');
+
+            if (contentType && (contentType.includes('avif') || contentType.includes('gif'))) {
+                c.header('Content-Type', contentType);
+                c.header('Cache-Control', 'public, max-age=31536000');
+                return c.body(arrayBuffer as any);
+            }
+
+            c.header('Content-Type', contentType || 'application/octet-stream');
+            c.header('Cache-Control', 'public, max-age=31536000');
+            return c.body(arrayBuffer as any);
+
+        } catch (fetchError: any) {
+            clearTimeout(timeout);
+            console.error(`[Proxy] Fetch failed: ${fetchError.name} - ${url}`);
+            // If timeout or network error, return fallback
+            c.header('Content-Type', 'image/png');
+            c.header('Cache-Control', 'public, max-age=60');
+            return c.body(FALLBACK_IMAGE as any);
+        }
 
     } catch (e: any) {
         console.error('Proxy Error:', e);

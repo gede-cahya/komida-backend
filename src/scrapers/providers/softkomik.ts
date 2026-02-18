@@ -79,6 +79,11 @@ export class SoftkomikScraper implements ScraperProvider {
                 let imgEl = $(element).find('img').first();
                 let image = imgEl.attr('data-src') || imgEl.attr('src') || imgEl.attr('data-lazy-src') || '';
 
+                // Clean up double slashes from relative paths (e.g. //uploads...)
+                if (image.startsWith('//')) {
+                    image = image.substring(1);
+                }
+
                 if (!image || image.startsWith('data:')) {
                     const noScript = $(element).find('noscript').text();
                     if (noScript) {
@@ -242,7 +247,10 @@ export class SoftkomikScraper implements ScraperProvider {
                     // Cover images hosted on cover.softdevices.my.id/softkomik-cover/
                     image = `https://cover.softdevices.my.id/softkomik-cover/${props.gambar}`;
                 } else {
-                    image = `${this.baseUrl}${props.gambar}`;
+                    // Ensure no double slashes
+                    const cleanBase = this.baseUrl.replace(/\/$/, '');
+                    const cleanPath = props.gambar.startsWith('/') ? props.gambar : `/${props.gambar}`;
+                    image = `${cleanBase}${cleanPath}`;
                 }
             }
             const synopsis = props.sinopsis || props.description || '';

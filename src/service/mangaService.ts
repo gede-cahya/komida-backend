@@ -83,10 +83,27 @@ export class MangaService {
 
     async getPopularManga(page: number = 1, limit: number = 20) {
         const offset = (page - 1) * limit;
-        return await db.select()
+
+        const subquery = db.selectDistinctOn([mangaTable.title], {
+            id: mangaTable.id,
+            title: mangaTable.title,
+            image: mangaTable.image,
+            rating: mangaTable.rating,
+            chapter: mangaTable.chapter,
+            type: mangaTable.type,
+            span: mangaTable.span,
+            link: mangaTable.link,
+            source: mangaTable.source,
+            last_updated: mangaTable.last_updated
+        })
             .from(mangaTable)
             .where(eq(mangaTable.is_trending, true))
-            .orderBy(desc(mangaTable.last_updated))
+            .orderBy(mangaTable.title, desc(mangaTable.last_updated))
+            .as('sq');
+
+        return await db.select()
+            .from(subquery)
+            .orderBy(desc(subquery.last_updated))
             .limit(limit)
             .offset(offset);
     }
