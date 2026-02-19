@@ -90,6 +90,23 @@ export async function initDB() {
         console.log('Migrated: chapter_cache table');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
+      // Add announcements table
+      try {
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS announcements (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                type TEXT DEFAULT 'info',
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP
+            )
+        `;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active)`;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_announcements_created ON announcements(created_at)`;
+        console.log('Migrated: announcements table');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
       await queryClient.end();
     } catch (err: any) {
       console.error('Migration failed:', err);

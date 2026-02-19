@@ -250,6 +250,7 @@ app.use('/api/admin/*', async (c, next) => {
     }
 
     // c.set('user', payload); 
+    c.set('userId', payload.id);
     await next();
 });
 
@@ -417,6 +418,66 @@ app.delete('/api/admin/comments/:id', async (c) => {
     const id = Number(c.req.param('id'));
     try {
         await adminService.deleteComment(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Announcement Routes ---
+
+import { announcementService } from './service/announcementService';
+
+// Public route to get active announcement
+app.get('/api/announcements/active', async (c) => {
+    try {
+        const announcement = await announcementService.getActiveAnnouncement();
+        return c.json({ announcement });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// Admin routes for announcements
+app.get('/api/admin/announcements', async (c) => {
+    try {
+        const announcements = await announcementService.getAllAnnouncements();
+        return c.json({ announcements });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/announcements', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const body = await c.req.json();
+        const { content, type, image_url } = body;
+        if (!content) return c.json({ error: 'Content is required' }, 400);
+
+        const announcement = await announcementService.createAnnouncement(content, type, userId, image_url);
+        return c.json({ announcement });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/announcements/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const { is_active } = body;
+        const announcement = await announcementService.toggleActive(id, Boolean(is_active));
+        return c.json({ announcement });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/announcements/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await announcementService.deleteAnnouncement(id);
         return c.json({ success: true });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);

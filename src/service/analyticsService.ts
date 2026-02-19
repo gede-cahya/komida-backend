@@ -1,3 +1,4 @@
+
 import { db } from '../db';
 import { manga as mangaTable, mangaViews, siteVisits } from '../db/schema';
 import { eq, and, sql, count, desc, gt } from 'drizzle-orm';
@@ -44,45 +45,94 @@ export class AnalyticsService {
             if (isPostgres) {
                 const query = sql`
                     SELECT 
-                        MAX(m.title) as title, 
-                        MAX(m.image) as image, 
-                        MAX(m.source) as source, 
-                        mv.manga_slug as slug, 
-                        COUNT(mv.id) as views
-                    FROM manga_views mv
-                    JOIN manga m ON m.link LIKE '%' || mv.manga_slug || '%'
-                    WHERE mv.viewed_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
-                    GROUP BY mv.manga_slug
+                        manga_slug as slug, 
+                        COUNT(id) as views
+                    FROM manga_views
+                    WHERE viewed_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+                    GROUP BY manga_slug
                     ORDER BY views DESC
                     LIMIT 10
                 `;
-                const results = await db.execute(query);
-                return results.map((r: any) => ({
-                    ...r,
-                    views: Number(r.views)
-                }));
+                const topSlugs = await db.execute(query);
+
+                const results = [];
+                for (const row of topSlugs) {
+                    const rowSlug = row.slug as string;
+                    const rowViews = Number(row.views);
+
+                    const mangaList = await db.select({
+                        title: mangaTable.title,
+                        image: mangaTable.image,
+                        source: mangaTable.source,
+                        link: mangaTable.link
+                    })
+                        .from(mangaTable)
+                        .where(sql`${mangaTable.link} LIKE '%' || ${rowSlug} || '%'`)
+                        .limit(1);
+
+                    if (mangaList.length > 0) {
+                        results.push({
+                            ...mangaList[0],
+                            slug: rowSlug,
+                            views: rowViews
+                        });
+                    } else {
+                        results.push({
+                            title: rowSlug,
+                            image: '',
+                            source: '',
+                            slug: rowSlug,
+                            views: rowViews
+                        });
+                    }
+                }
+                return results;
             } else {
-                // SQLite Fallback (Keep existing Drizzle or use Raw SQLite if needed, but keeping Drizzle for dev is fine if it works)
-                // For consistency, let's stick to Drizzle for SQLite since the issue is likely Postgres-specific binding
+                // SQLite Fallback
                 const timeInterval = period === 'day' ? "'-1 day'" : period === 'week' ? "'-7 days'" : "'-30 days'";
                 const timeFilter = sql`datetime('now', ${timeInterval})`;
 
-                const results = await db.select({
+                const topSlugs = await db.select({
                     slug: mangaViews.manga_slug,
-                    title: mangaTable.title,
-                    image: mangaTable.image,
-                    source: mangaTable.source,
                     views: count(mangaViews.id)
                 })
                     .from(mangaViews)
-                    .innerJoin(mangaTable, sql`${mangaTable.link} LIKE '%' || ${mangaViews.manga_slug} || '%'`)
-                    .where(gt(mangaViews.viewed_at, timeFilter))
                     .where(gt(mangaViews.viewed_at, timeFilter))
                     .groupBy(mangaViews.manga_slug)
                     .orderBy(desc(count(mangaViews.id)))
                     .limit(10);
 
-                return results.map((r: any) => ({ ...r, views: Number(r.views) }));
+                const results = [];
+                for (const row of topSlugs) {
+                    const rowSlug = row.slug as string;
+                    const rowViews = Number(row.views);
+
+                    const mangaList = await db.select({
+                        title: mangaTable.title,
+                        image: mangaTable.image,
+                        source: mangaTable.source
+                    })
+                        .from(mangaTable)
+                        .where(sql`${mangaTable.link} LIKE '%' || ${rowSlug} || '%'`)
+                        .limit(1);
+
+                    if (mangaList.length > 0) {
+                        results.push({
+                            ...mangaList[0],
+                            slug: rowSlug,
+                            views: rowViews
+                        });
+                    } else {
+                        results.push({
+                            title: rowSlug,
+                            image: '',
+                            source: '',
+                            slug: rowSlug,
+                            views: rowViews
+                        });
+                    }
+                }
+                return results;
             }
         } catch (error) {
             console.error('Error getting top manga:', error);
@@ -179,3 +229,5 @@ export class AnalyticsService {
         }
     }
 }
+
+export const analyticsService = new AnalyticsService();

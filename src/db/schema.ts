@@ -90,4 +90,20 @@ export const chapterCache = pgTable('chapter_cache', {
     ];
 });
 
+export const announcements = pgTable('announcements', {
+    id: serial('id').primaryKey(),
+    content: text('content').notNull(),
+    type: text('type').default('info'), // info, warning, success, etc.
+    is_active: boolean('is_active').default(true),
+    created_at: timestamp('created_at').defaultNow(),
+    expires_at: timestamp('expires_at'),
+    admin_id: integer('admin_id').references(() => users.id),
+    image_url: text('image_url'),
+}, (table) => {
+    return [
+        index('idx_announcements_active').on(table.is_active),
+        index('idx_announcements_created').on(table.created_at),
+    ];
+});
+
 // Duplicate removed
