@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { manga as mangaTable } from '../db/schema';
+import { manga as mangaTable, chapterCache } from '../db/schema';
 import { eq, and, like, ilike, desc, sql } from 'drizzle-orm';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
@@ -211,12 +211,48 @@ export class MangaService {
     }
 
     async getChapterImages(source: string, link: string) {
+        // 1. Check Cache
+        const cached = await db.select()
+            .from(chapterCache)
+            .where(and(eq(chapterCache.source, source), eq(chapterCache.link, link)))
+            .limit(1);
+
+        if (cached.length > 0) {
+            console.log(`[Cache] Hit for chapter: ${link}`);
+            return {
+                images: JSON.parse(cached[0].images),
+                next: cached[0].next_slug || undefined,
+                prev: cached[0].prev_slug || undefined
+            };
+        }
+
+        // 2. Scrape if not in cache
+        console.log(`[Cache] Miss for chapter: ${link}. Scraping...`);
         const scraper = this.scrapers.find(s => s.name === source);
         if (!scraper) {
             console.error(`Scraper not found for source: ${source}`);
             return null;
         }
-        return await scraper.scrapeChapter(link);
+
+        const data = await scraper.scrapeChapter(link);
+
+        // 3. Save to Cache
+        if (data && data.images && data.images.length > 0) {
+            try {
+                await db.insert(chapterCache).values({
+                    source,
+                    link,
+                    images: JSON.stringify(data.images),
+                    next_slug: data.next || null,
+                    prev_slug: data.prev || null
+                });
+                console.log(`[Cache] Saved chapter: ${link}`);
+            } catch (e) {
+                console.error(`[Cache] Failed to save chapter: ${e}`);
+            }
+        }
+
+        return data;
     }
 
     async getGenres() {

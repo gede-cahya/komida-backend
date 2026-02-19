@@ -73,6 +73,22 @@ export async function initDB() {
         console.log('Migrated: comments columns');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
+      // Add chapter_cache table
+      try {
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS chapter_cache (
+                id SERIAL PRIMARY KEY,
+                source TEXT NOT NULL,
+                link TEXT NOT NULL,
+                images TEXT NOT NULL,
+                next_slug TEXT,
+                prev_slug TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_chapter_cache_lookup ON chapter_cache(source, link)`;
+        console.log('Migrated: chapter_cache table');
+      } catch (e: any) { console.log('Migration info:', e.message); }
 
       await queryClient.end();
     } catch (err: any) {

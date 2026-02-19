@@ -19,6 +19,12 @@ export const manga = pgTable('manga', {
     status: text('status'),
     author: text('author'),
     last_updated: timestamp('last_updated').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_manga_title').on(table.title),
+        index('idx_manga_link').on(table.link),
+        index('idx_manga_trending').on(table.is_trending),
+    ];
 });
 
 export const mangaViews = pgTable('manga_views', {
@@ -69,3 +75,19 @@ export const comments = pgTable('comments', {
     media_url: text('media_url'),
     created_at: timestamp('created_at').defaultNow(),
 });
+
+export const chapterCache = pgTable('chapter_cache', {
+    id: serial('id').primaryKey(),
+    source: text('source').notNull(),
+    link: text('link').notNull(),
+    images: text('images').notNull(), // JSON stringified array of URLs
+    next_slug: text("next_slug"),
+    prev_slug: text("prev_slug"),
+    created_at: timestamp('created_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_chapter_cache_lookup').on(table.source, table.link),
+    ];
+});
+
+// Duplicate removed
