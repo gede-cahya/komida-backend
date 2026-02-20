@@ -57,12 +57,41 @@ export class UserService {
             email: usersTable.email,
             display_name: usersTable.display_name,
             avatar_url: usersTable.avatar_url,
+            wallet_address: usersTable.wallet_address,
             is_banned: usersTable.is_banned,
             created_at: usersTable.created_at
         })
             .from(usersTable)
             .where(eq(usersTable.id, id))
             .limit(1);
+        return results[0];
+    }
+
+    async getUserByWalletAddress(walletAddress: string) {
+        const results = await db.select()
+            .from(usersTable)
+            .where(eq(usersTable.wallet_address, walletAddress))
+            .limit(1);
+        return results[0];
+    }
+
+    async getOrCreateWalletUser(walletAddress: string) {
+        let user = await this.getUserByWalletAddress(walletAddress);
+        if (user) return user;
+
+        // Create new user for this wallet
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const generatedUsername = `web3_${walletAddress.slice(2, 8)}${randomStr}`;
+        // Random impossible password, since they login via wallet
+        const randomPassword = await this.hashPassword(crypto.randomUUID());
+
+        const results = await db.insert(usersTable).values({
+            username: generatedUsername,
+            password: randomPassword,
+            wallet_address: walletAddress,
+            role: 'user',
+        }).returning();
+
         return results[0];
     }
 

@@ -57,6 +57,7 @@ export const users = pgTable('users', {
     email: text('email'),
     display_name: text('display_name'),
     avatar_url: text('avatar_url'),
+    wallet_address: text('wallet_address').unique(),
     is_banned: boolean('is_banned').default(false),
     created_at: timestamp('created_at').defaultNow(),
 }, (table) => {

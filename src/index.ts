@@ -8,12 +8,20 @@ import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { manga as mangaTable, siteVisits, mangaViews } from './db/schema'
 import { eq, desc, count, sql } from 'drizzle-orm'
 import { zValidator } from '@hono/zod-validator'
-import { loginSchema, registerSchema, commentSchema, userUpdateSchema, mangaUpdateSchema } from './zod/schemas'
+import { loginSchema, registerSchema, commentSchema, userUpdateSchema, mangaUpdateSchema, verifyWalletSchema } from './zod/schemas'
 import sharp from 'sharp';
 import { encryptData, decryptData } from './utils/secure';
 import { serveStatic } from 'hono/bun';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { generateSiweNonce, parseSiweMessage } from 'viem/siwe';
+import { createPublicClient, http, verifyMessage } from 'viem';
+import { base } from 'viem/chains';
+
+const publicClient = createPublicClient({
+    chain: base,
+    transport: http(process.env.ALCHEMY_RPC_URL || 'https://mainnet.base.org')
+});
 
 await initDB();
 console.log('Database initialized');
@@ -139,6 +147,55 @@ app.post('/api/auth/logout', (c) => {
     return c.json({ success: true });
 });
 
+// Web3 SIWE Routes
+app.get('/api/auth/nonce', (c) => {
+    const nonce = generateSiweNonce();
+    return c.json({ nonce });
+});
+
+app.post('/api/auth/verify-wallet', zValidator('json', verifyWalletSchema), async (c) => {
+    try {
+        const body = c.req.valid('json');
+        const { message, signature } = body;
+
+        const parsedMessage = parseSiweMessage(message);
+
+        const isValid = await verifyMessage({
+            address: parsedMessage.address as `0x${string}`,
+            message: message as string,
+            signature: (signature as string) as `0x${string}`,
+        });
+
+        if (!isValid) {
+            return c.json({ error: 'Invalid Web3 Signature' }, 401);
+        }
+
+        // Check or create user by wallet address
+        const walletAddress = parsedMessage.address as string;
+        if (!walletAddress) {
+            return c.json({ error: 'Missing address in signature' }, 400);
+        }
+        const user = await userService.getOrCreateWalletUser(walletAddress);
+
+        const token = await createToken({ id: user.id, username: user.username, role: user.role });
+
+        setCookie(c, 'auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/'
+        });
+
+        const { password: _, ...userWithoutPass } = user;
+        return c.json({ user: userWithoutPass, token, success: true });
+
+    } catch (e: any) {
+        console.error('Wallet verify error:', e);
+        return c.json({ error: e.message || 'Signature verification failed' }, 400);
+    }
+});
+
 // User Auth Middleware (any authenticated user)
 app.use('/api/user/*', async (c, next) => {
     let token = getCookie(c, 'auth_token');
@@ -250,7 +307,7 @@ app.use('/api/admin/*', async (c, next) => {
     }
 
     // c.set('user', payload); 
-    c.set('userId', payload.id);
+    c.set('userId' as any, payload.id);
     await next();
 });
 

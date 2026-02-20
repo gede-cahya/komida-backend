@@ -6,6 +6,11 @@ export const loginSchema = z.object({
     password: z.string().min(6),
 });
 
+export const verifyWalletSchema = z.object({
+    message: z.string().min(10), // The SIWE message text
+    signature: z.string().startsWith('0x'), // The cryptographic signature
+});
+
 export const registerSchema = z.object({
     username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
     password: z.string().min(6),
