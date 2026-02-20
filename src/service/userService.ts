@@ -1,6 +1,8 @@
 import { db } from '../db';
-import { users as usersTable } from '../db/schema';
-import { eq, count } from 'drizzle-orm';
+import { users as usersTable, userDecorations as userDecorationsTable, decorations as decorationsTable, userBadges as userBadgesTable, badges as badgesTable } from '../db/schema';
+import { eq, count, and } from 'drizzle-orm';
+import { decorationService } from './decorationService';
+import { badgeService } from './badgeService';
 
 const DEFAULT_AVATAR = "https://ui-avatars.com/api/?background=random";
 
@@ -64,7 +66,43 @@ export class UserService {
             .from(usersTable)
             .where(eq(usersTable.id, id))
             .limit(1);
-        return results[0];
+
+        const user: any = results[0];
+        if (!user) return null;
+
+        // Fetch equipped decoration
+        const [decoration] = await db.select({
+            image_url: decorationsTable.image_url
+        })
+            .from(userDecorationsTable)
+            .innerJoin(decorationsTable, eq(userDecorationsTable.decoration_id, decorationsTable.id))
+            .where(
+                and(
+                    eq(userDecorationsTable.user_id, id),
+                    eq(userDecorationsTable.is_equipped, true)
+                )
+            )
+            .limit(1);
+
+        user.decoration_url = decoration?.image_url || null;
+
+        // Fetch equipped badges
+        const badges = await db.select({
+            name: badgesTable.name,
+            icon_url: badgesTable.icon_url
+        })
+            .from(userBadgesTable)
+            .innerJoin(badgesTable, eq(userBadgesTable.badge_id, badgesTable.id))
+            .where(
+                and(
+                    eq(userBadgesTable.user_id, id),
+                    eq(userBadgesTable.is_equipped, true)
+                )
+            );
+
+        user.badges = badges;
+
+        return user;
     }
 
     async getUserByWalletAddress(walletAddress: string) {

@@ -107,4 +107,50 @@ export const announcements = pgTable('announcements', {
     ];
 });
 
-// Duplicate removed
+export const decorations = pgTable('decorations', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description'),
+    image_url: text('image_url').notNull(),
+    type: text('type').default('regular'), // regular, nft, seasonal
+    nft_contract_address: text('nft_contract_address'),
+    nft_token_id: text('nft_token_id'),
+    created_at: timestamp('created_at').defaultNow(),
+});
+
+export const badges = pgTable('badges', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description'),
+    icon_url: text('icon_url').notNull(),
+    type: text('type').default('regular'), // regular, nft, achievement
+    nft_contract_address: text('nft_contract_address'),
+    nft_token_id: text('nft_token_id'),
+    created_at: timestamp('created_at').defaultNow(),
+});
+
+export const userDecorations = pgTable('user_decorations', {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id').notNull().references(() => users.id),
+    decoration_id: integer('decoration_id').notNull().references(() => decorations.id),
+    is_equipped: boolean('is_equipped').default(false),
+    acquired_at: timestamp('acquired_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_user_decorations_user').on(table.user_id),
+        uniqueIndex('idx_user_decorations_unique').on(table.user_id, table.decoration_id),
+    ];
+});
+
+export const userBadges = pgTable('user_badges', {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id').notNull().references(() => users.id),
+    badge_id: integer('badge_id').notNull().references(() => badges.id),
+    is_equipped: boolean('is_equipped').default(true), // Users can have multiple badges equipped usually
+    acquired_at: timestamp('acquired_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_user_badges_user').on(table.user_id),
+        uniqueIndex('idx_user_badges_unique').on(table.user_id, table.badge_id),
+    ];
+});

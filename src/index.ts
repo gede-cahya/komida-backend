@@ -71,6 +71,8 @@ import { userService } from './service/userService';
 import { createToken, verifyToken } from './utils/auth';
 import { commentService } from './service/commentService';
 import { AnalyticsService } from './service/analyticsService';
+import { decorationService } from './service/decorationService';
+import { badgeService } from './service/badgeService';
 
 const analyticsService = new AnalyticsService();
 
@@ -280,6 +282,79 @@ app.put('/api/user/password', async (c) => {
         return c.json({ message: 'Password changed successfully' });
     } catch (e: any) {
         return c.json({ error: e.message }, 400);
+    }
+});
+
+// --- Decoration & Badge Routes ---
+
+app.get('/api/user/decorations', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const decorations = await decorationService.getUserDecorations(userId);
+        return c.json({ decorations });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/user/decorations/equip', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const body = await c.req.json();
+        const { decorationId } = body;
+
+        const result = await decorationService.equipDecoration(userId, decorationId);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
+app.post('/api/user/decorations/sync', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const result = await decorationService.syncNFTDecorations(userId);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/user/badges', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const badges = await badgeService.getUserBadges(userId);
+        return c.json({ badges });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/user/badges/sync', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const result = await badgeService.syncNFTBadges(userId);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/decorations', async (c) => {
+    try {
+        const decorations = await decorationService.getAllDecorations();
+        return c.json({ decorations });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/badges', async (c) => {
+    try {
+        const badges = await badgeService.getAllBadges();
+        return c.json({ badges });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
     }
 });
 
@@ -541,6 +616,70 @@ app.delete('/api/admin/announcements/:id', async (c) => {
     }
 });
 
+// --- Admin Decoration & Badge Management ---
+
+app.post('/api/admin/decorations', async (c) => {
+    try {
+        const body = await c.req.json();
+        const decoration = await adminService.createDecoration(body);
+        return c.json({ decoration });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/decorations/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const decoration = await adminService.updateDecoration(id, body);
+        return c.json({ decoration });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/decorations/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteDecoration(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/badges', async (c) => {
+    try {
+        const body = await c.req.json();
+        const badge = await adminService.createBadge(body);
+        return c.json({ badge });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/badges/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const badge = await adminService.updateBadge(id, body);
+        return c.json({ badge });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/badges/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteBadge(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // --- System Health ---
 
 app.get('/api/admin/system/health', async (c) => {
@@ -635,8 +774,8 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
             content,
             chapter_slug,
             Boolean(is_spoiler),
-            media_url ?? null);
-        const userProfile = await userService.getUserById(payload.id);
+            media_url ?? undefined);
+        const userProfile: any = await userService.getUserById(payload.id);
 
         // Return with username for immediate display
         return c.json({
@@ -645,7 +784,9 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
                 username: userProfile.username,
                 role: userProfile.role,
                 display_name: userProfile.display_name,
-                avatar_url: userProfile.avatar_url
+                avatar_url: userProfile.avatar_url,
+                decoration_url: userProfile.decoration_url,
+                badges: userProfile.badges
             }
         });
     } catch (e: any) {

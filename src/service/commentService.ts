@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { comments as commentsTable, users as usersTable } from '../db/schema';
+import { comments as commentsTable, users as usersTable, userDecorations as userDecorationsTable, decorations as decorationsTable, userBadges as userBadgesTable, badges as badgesTable } from '../db/schema';
 import { eq, and, desc, isNull } from 'drizzle-orm';
 
 export class CommentService {
@@ -30,7 +30,44 @@ export class CommentService {
             )
             .orderBy(desc(commentsTable.created_at));
 
-        return await query;
+        const comments = await query;
+
+        // Enrich comments with badges and active decoration
+        const enrichedComments = await Promise.all(comments.map(async (comment: any) => {
+            const [decoration] = await db.select({
+                image_url: decorationsTable.image_url
+            })
+                .from(userDecorationsTable)
+                .innerJoin(decorationsTable, eq(userDecorationsTable.decoration_id, decorationsTable.id))
+                .where(
+                    and(
+                        eq(userDecorationsTable.user_id, comment.user_id),
+                        eq(userDecorationsTable.is_equipped, true)
+                    )
+                )
+                .limit(1);
+
+            const badges = await db.select({
+                name: badgesTable.name,
+                icon_url: badgesTable.icon_url
+            })
+                .from(userBadgesTable)
+                .innerJoin(badgesTable, eq(userBadgesTable.badge_id, badgesTable.id))
+                .where(
+                    and(
+                        eq(userBadgesTable.user_id, comment.user_id),
+                        eq(userBadgesTable.is_equipped, true)
+                    )
+                );
+
+            return {
+                ...comment,
+                decoration_url: decoration?.image_url || null,
+                badges
+            };
+        }));
+
+        return enrichedComments;
     }
 
     async createComment(userId: number, slug: string, content: string | undefined, chapterSlug?: string | null, isSpoiler: boolean = false, mediaUrl?: string | null) {

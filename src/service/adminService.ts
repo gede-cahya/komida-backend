@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { manga as mangaTable, users as usersTable, comments as commentsTable } from '../db/schema';
+import { manga as mangaTable, users as usersTable, comments as commentsTable, decorations as decorationsTable, badges as badgesTable } from '../db/schema';
 import { eq, like, desc, count, and } from 'drizzle-orm';
 import { mangaService } from './mangaService';
 
@@ -200,6 +200,36 @@ export class AdminService {
 
     async deleteComment(id: number) {
         await db.delete(commentsTable).where(eq(commentsTable.id, id));
+    }
+
+    // --- Decoration & Badge Management ---
+
+    async createDecoration(data: any) {
+        const results = await db.insert(decorationsTable).values(data).returning();
+        return results[0];
+    }
+
+    async updateDecoration(id: number, data: any) {
+        const results = await db.update(decorationsTable).set(data).where(eq(decorationsTable.id, id)).returning();
+        return results[0];
+    }
+
+    async deleteDecoration(id: number) {
+        await db.delete(decorationsTable).where(eq(decorationsTable.id, id));
+    }
+
+    async createBadge(data: any) {
+        const results = await db.insert(badgesTable).values(data).returning();
+        return results[0];
+    }
+
+    async updateBadge(id: number, data: any) {
+        const results = await db.update(badgesTable).set(data).where(eq(badgesTable.id, id)).returning();
+        return results[0];
+    }
+
+    async deleteBadge(id: number) {
+        await db.delete(badgesTable).where(eq(badgesTable.id, id));
     }
 }
 
