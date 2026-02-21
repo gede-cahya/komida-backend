@@ -167,6 +167,12 @@ export class MangaService {
 
         if (rows.length === 0) return null;
 
+        // Collect genres found during chapter lazy-loading to avoid redundant scraping
+        let lazyLoadedGenres: string[] = [];
+        let lazyLoadedSynopsis: string = '';
+        let lazyLoadedAuthor: string = '';
+        let lazyLoadedStatus: string = '';
+
         const sources = await Promise.all(rows.map(async (row) => {
             let chapters = JSON.parse(row.chapters || '[]');
             const looksCorrupted = chapters.length > 0 && chapters.some((ch: any) =>
@@ -182,8 +188,27 @@ export class MangaService {
                     const detailed = await scraper.scrapeDetail(row.link);
                     if (detailed && detailed.chapters) {
                         chapters = detailed.chapters;
+                        // Save chapters AND any other missing metadata (genres, synopsis, etc.)
+                        const updateData: any = { chapters: JSON.stringify(chapters) };
+                        if (detailed.genres && detailed.genres.length > 0 && (!row.genres || JSON.parse(row.genres || '[]').length === 0)) {
+                            updateData.genres = JSON.stringify(detailed.genres);
+                            lazyLoadedGenres = detailed.genres;
+                            console.log(`[LazyLoad] Also saving genres for ${row.title}: ${detailed.genres.join(', ')}`);
+                        }
+                        if (detailed.synopsis && (!row.synopsis || row.synopsis === '')) {
+                            updateData.synopsis = detailed.synopsis;
+                            lazyLoadedSynopsis = detailed.synopsis;
+                        }
+                        if (detailed.author && detailed.author !== 'Unknown' && (!row.author || row.author === 'Unknown')) {
+                            updateData.author = detailed.author;
+                            lazyLoadedAuthor = detailed.author;
+                        }
+                        if (detailed.status && detailed.status !== 'Unknown' && (!row.status || row.status === 'Unknown')) {
+                            updateData.status = detailed.status;
+                            lazyLoadedStatus = detailed.status;
+                        }
                         await db.update(mangaTable)
-                            .set({ chapters: JSON.stringify(chapters) })
+                            .set(updateData)
                             .where(eq(mangaTable.id, row.id));
                     }
                 }
@@ -200,8 +225,13 @@ export class MangaService {
 
         const primary = rows[0];
 
-        // Lazy-load genres if empty (similar to chapter lazy-loading)
+        // Use genres from DB, or from lazy-loaded chapter scrape, or trigger a dedicated genre scrape
         let genres = JSON.parse(primary.genres || '[]');
+        if (genres.length === 0 && lazyLoadedGenres.length > 0) {
+            // Use genres already found during chapter lazy-loading (avoids redundant scrape)
+            genres = lazyLoadedGenres;
+            console.log(`[LazyLoad] Using genres from chapter lazy-load: ${genres.join(', ')}`);
+        }
         if (genres.length === 0) {
             const scraper = this.scrapers.find(s => s.name === primary.source);
             if (scraper) {
@@ -222,6 +252,8 @@ export class MangaService {
                                 .where(eq(mangaTable.id, row.id));
                         }
                         console.log(`[LazyLoad] Updated genres for ${primary.title}: ${genres.join(', ')}`);
+                    } else {
+                        console.log(`[LazyLoad] Scraper returned no genres for ${primary.title}`);
                     }
                 } catch (e) {
                     console.error(`[LazyLoad] Failed to scrape genres for ${primary.title}:`, e);
@@ -232,10 +264,10 @@ export class MangaService {
         return {
             title: primary.title,
             image: primary.image,
-            author: primary.author || 'Unknown',
-            status: primary.status || 'Ongoing',
+            author: lazyLoadedAuthor || primary.author || 'Unknown',
+            status: lazyLoadedStatus || primary.status || 'Ongoing',
             genres: genres,
-            synopsis: primary.synopsis || '',
+            synopsis: lazyLoadedSynopsis || primary.synopsis || '',
             sources: sources
         };
     }

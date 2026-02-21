@@ -1555,7 +1555,9 @@ app.get('/api/manga/slug/:slug', async (c) => {
                 const payload = await verifyToken(token);
                 if (payload) {
                     // Track comics_read quest
-                    questService.updateQuestProgress(payload.id, 'comics_read').catch(() => { });
+                    questService.updateQuestProgress(payload.id, 'comics_read').catch((e) => {
+                        console.error('[Quest] Failed to update comics_read:', e);
+                    });
 
                     // Grant XP for reading manga
                     const { tierService, XP_AMOUNTS } = await import('./service/tierService');
@@ -1563,17 +1565,22 @@ app.get('/api/manga/slug/:slug', async (c) => {
 
                     // Track genre_read quest using already-fetched genres
                     if (data.genres && data.genres.length > 0) {
+                        console.log(`[Quest] Tracking genres for user ${payload.id}: ${JSON.stringify(data.genres)}`);
                         for (const genre of data.genres) {
                             const genreName = typeof genre === 'string' ? genre : genre.name;
                             if (genreName) {
-                                questService.updateQuestProgress(payload.id, 'genre_read', genreName).catch(() => { });
+                                questService.updateQuestProgress(payload.id, 'genre_read', genreName).catch((e) => {
+                                    console.error(`[Quest] Failed to update genre_read for "${genreName}":`, e);
+                                });
                             }
                         }
+                    } else {
+                        console.log(`[Quest] No genres found for manga slug: ${slug}`);
                     }
                 }
             }
         } catch (e) {
-            // Quest tracking should never block the main request
+            console.error('[Quest] Quest tracking error:', e);
         }
 
         // Encrypt chapter links in all sources

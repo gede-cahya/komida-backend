@@ -114,17 +114,26 @@ export class KiryuuScraper implements ScraperProvider {
             if (html.length < 2000) console.log(`[Kiryuu] Short HTML (${html.length} chars)`);
             const $ = cheerio.load(html);
 
-            const title = $('h1').first().text().trim();
-            const image = $('.thumb img').attr('src') || $('.wp-post-image').attr('src') || $('img[itemprop="image"]').attr('src') || '';
+            const title = $('h1[itemprop="name"]').first().text().trim() || $('h1').first().text().trim();
+            const image = $('img.wp-post-image').attr('src') || $('img[itemprop="image"]').attr('src') || $('.thumb img').attr('src') || '';
 
-            const synopsis = $('.entry-content p').map((_, el) => $(el).text().trim()).get().join('\n\n')
+            // New Kiryuu uses itemprop="description" div; fallback to old selectors
+            const synopsis = $('div[itemprop="description"]').first().text().trim()
+                || $('.entry-content p').map((_, el) => $(el).text().trim()).get().join('\n\n')
                 || $('.entry-content').text().trim()
                 || $('.seriestucon').text().trim();
 
-            const genres = $('.gnr a, .mgen a, .seriestugenre a').map((_, el) => $(el).text().trim()).get();
-            const status = $('.tsinfo .imptdt:contains("Status") i').text().trim() || 'Unknown';
+            // New Kiryuu uses itemprop="genre" on <a> tags; fallback to old selectors
+            const genres = $('a[itemprop="genre"]').map((_, el) => $(el).text().trim()).get();
+            if (genres.length === 0) {
+                // Fallback: old WordPress selectors
+                const oldGenres = $('.gnr a, .mgen a, .seriestugenre a, a[href*="/genre/"]').map((_, el) => $(el).text().trim()).get();
+                genres.push(...oldGenres);
+            }
+
+            const status = $('.tsinfo .imptdt:contains("Status") i').text().trim() || 'Ongoing';
             const author = $('.tsinfo .imptdt:contains("Author") i').text().trim() || 'Unknown';
-            const rating = parseFloat($('.num').text().trim()) || 0;
+            const rating = parseFloat($('[itemprop="ratingValue"]').text().trim()) || parseFloat($('.num').text().trim()) || 0;
 
             const chapters: MangaChapter[] = [];
 

@@ -7,7 +7,7 @@ import {
     decorations as decorationsTable,
     userDecorations as userDecorationsTable,
 } from '../db/schema';
-import { eq, and, sql, lte, gte, or, isNull } from 'drizzle-orm';
+import { eq, and, sql, lte, gte, or, isNull, ilike } from 'drizzle-orm';
 
 export class QuestService {
 
@@ -71,17 +71,19 @@ export class QuestService {
         let matchingQuests;
 
         if (questType === 'genre_read' && genre) {
+            console.log(`[Quest] Looking for genre_read quests matching genre: "${genre}"`);
             matchingQuests = await db.select()
                 .from(questsTable)
                 .where(
                     and(
                         eq(questsTable.is_active, true),
                         eq(questsTable.quest_type, 'genre_read'),
-                        eq(questsTable.target_genre, genre),
+                        ilike(questsTable.target_genre, genre),
                         or(isNull(questsTable.starts_at), lte(questsTable.starts_at, now)),
                         or(isNull(questsTable.expires_at), gte(questsTable.expires_at, now))
                     )
                 );
+            console.log(`[Quest] Found ${matchingQuests.length} matching quests for genre "${genre}"`);
         } else {
             matchingQuests = await db.select()
                 .from(questsTable)
@@ -126,6 +128,7 @@ export class QuestService {
                     await this.grantRewards(userId, quest);
                 }
 
+                console.log(`[Quest] Updated quest "${quest.title}" for user ${userId}: progress ${newProgress}/${quest.target_value}, completed: ${isCompleted}`);
                 results.push({
                     quest_id: quest.id,
                     title: quest.title,
@@ -148,6 +151,7 @@ export class QuestService {
                     await this.grantRewards(userId, quest);
                 }
 
+                console.log(`[Quest] Started quest "${quest.title}" for user ${userId}: progress 1/${quest.target_value}, completed: ${isCompleted}`);
                 results.push({
                     quest_id: quest.id,
                     title: quest.title,
@@ -251,9 +255,12 @@ export class QuestService {
             created_at: questsTable.created_at,
             badge_name: badgesTable.name,
             badge_icon_url: badgesTable.icon_url,
+            decoration_name: decorationsTable.name,
+            decoration_image_url: decorationsTable.image_url,
         })
             .from(questsTable)
-            .leftJoin(badgesTable, eq(questsTable.reward_badge_id, badgesTable.id));
+            .leftJoin(badgesTable, eq(questsTable.reward_badge_id, badgesTable.id))
+            .leftJoin(decorationsTable, eq(questsTable.reward_decoration_id, decorationsTable.id));
     }
 
     async createQuest(data: {
