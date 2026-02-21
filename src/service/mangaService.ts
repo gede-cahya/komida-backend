@@ -5,6 +5,7 @@ import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
 
 import { SoftkomikScraper } from '../scrapers/providers/softkomik';
+import { KeikomikScraper } from '../scrapers/providers/keikomik';
 import type { ScrapedManga, ScraperProvider } from '../scrapers/types';
 
 export class MangaService {
@@ -16,6 +17,7 @@ export class MangaService {
             new ManhwaIndoScraper(),
 
             new SoftkomikScraper(),
+            new KeikomikScraper(),
         ];
     }
 

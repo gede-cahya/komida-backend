@@ -3,6 +3,7 @@ export enum MangaSource {
     MANHWAINDO = 'ManhwaIndo',
     SHINIGAMI = 'Shinigami',
     SOFTKOMIK = 'Softkomik',
+    KEIKOMIK = 'Keikomik',
 }
 
 export interface ScrapedManga {

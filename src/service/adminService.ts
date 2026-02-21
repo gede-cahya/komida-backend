@@ -93,10 +93,17 @@ export class AdminService {
 
     // --- Manga Management ---
 
-    async getAllManga(page: number = 1, limit: number = 20, search: string = '') {
+    async getAllManga(page: number = 1, limit: number = 20, search: string = '', source: string = '') {
         const offset = (page - 1) * limit;
 
-        const whereClause = search ? like(mangaTable.title, `%${search}%`) : undefined;
+        let whereClause;
+        if (search && source) {
+            whereClause = and(like(mangaTable.title, `%${search}%`), eq(mangaTable.source, source));
+        } else if (search) {
+            whereClause = like(mangaTable.title, `%${search}%`);
+        } else if (source) {
+            whereClause = eq(mangaTable.source, source);
+        }
 
         const manga = await db.select({
             id: mangaTable.id,

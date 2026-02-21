@@ -520,9 +520,10 @@ app.get('/api/admin/manga', async (c) => {
     const page = Number(c.req.query('page')) || 1;
     const limit = Number(c.req.query('limit')) || 20;
     const search = c.req.query('search') || '';
+    const sourceFilter = c.req.query('source') || '';
 
     try {
-        const result = await adminService.getAllManga(page, limit, search);
+        const result = await adminService.getAllManga(page, limit, search, sourceFilter);
         return c.json(result);
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
