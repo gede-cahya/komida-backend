@@ -73,8 +73,36 @@ import { commentService } from './service/commentService';
 import { AnalyticsService } from './service/analyticsService';
 import { decorationService } from './service/decorationService';
 import { badgeService } from './service/badgeService';
+import { questService } from './service/questService';
+import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
 
 const analyticsService = new AnalyticsService();
+
+// Serve static uploads (badge icons, etc.) via /api/uploads/*
+app.get('/api/uploads/*', async (c) => {
+    const filePath = c.req.path.replace('/api/uploads/', '');
+    const fullPath = path.join(process.cwd(), 'public', 'uploads', filePath);
+
+    if (!existsSync(fullPath)) {
+        return c.json({ error: 'File not found' }, 404);
+    }
+
+    const ext = path.extname(fullPath).toLowerCase();
+    const contentType = ext === '.png' ? 'image/png'
+        : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg'
+            : ext === '.webp' ? 'image/webp'
+                : ext === '.svg' ? 'image/svg+xml'
+                    : 'application/octet-stream';
+
+    const fileData = readFileSync(fullPath);
+    return new Response(fileData, {
+        headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=86400',
+        }
+    });
+});
 
 // Analytics Middleware
 app.use('*', async (c, next) => {
@@ -340,6 +368,45 @@ app.post('/api/user/badges/sync', async (c) => {
     }
 });
 
+// --- Quest Routes (User) ---
+
+app.get('/api/user/quests', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const quests = await questService.getUserQuestProgress(userId);
+        return c.json({ quests });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/user/quests/:questId/claim', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const questId = Number(c.req.param('questId'));
+        const result = await questService.claimReward(userId, questId);
+
+        // Grant XP for completing quest
+        const { tierService, XP_AMOUNTS } = await import('./service/tierService');
+        const xpResult = await tierService.addXP(userId, XP_AMOUNTS.quest_complete, 'Completed quest');
+
+        return c.json({ ...result, xp_earned: XP_AMOUNTS.quest_complete, tier_info: xpResult });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 400);
+    }
+});
+
+app.get('/api/user/tier', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const { tierService } = await import('./service/tierService');
+        const tierInfo = await tierService.getUserTierInfo(userId);
+        return c.json(tierInfo);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 app.get('/api/decorations', async (c) => {
     try {
         const decorations = await decorationService.getAllDecorations();
@@ -353,6 +420,17 @@ app.get('/api/badges', async (c) => {
     try {
         const badges = await badgeService.getAllBadges();
         return c.json({ badges });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Quest Routes (Public) ---
+
+app.get('/api/quests', async (c) => {
+    try {
+        const quests = await questService.getActiveQuests();
+        return c.json({ quests });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
     }
@@ -535,6 +613,15 @@ app.post('/api/admin/manga/update-all', async (c) => {
 
 // --- Admin Comment Management ---
 
+app.get('/api/admin/active-users', async (c) => {
+    try {
+        const topUsers = await adminService.getTopActiveUsersToday(10);
+        return c.json({ activeUsers: topUsers });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 app.get('/api/admin/comments', async (c) => {
     const page = Number(c.req.query('page')) || 1;
     const limit = Number(c.req.query('limit')) || 20;
@@ -680,6 +767,227 @@ app.delete('/api/admin/badges/:id', async (c) => {
     }
 });
 
+// --- Admin Quest Management ---
+
+app.get('/api/admin/quests', async (c) => {
+    try {
+        const quests = await questService.getAllQuests();
+        return c.json({ quests });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/quests', async (c) => {
+    try {
+        const userId = c.get('userId' as any) as number;
+        const body = await c.req.json();
+        const quest = await questService.createQuest({
+            ...body,
+            created_by: userId,
+            starts_at: body.starts_at ? new Date(body.starts_at) : null,
+            expires_at: body.expires_at ? new Date(body.expires_at) : null,
+        });
+        return c.json({ quest });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/quests/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        if (body.starts_at) body.starts_at = new Date(body.starts_at);
+        if (body.expires_at) body.expires_at = new Date(body.expires_at);
+        const quest = await questService.updateQuest(id, body);
+        return c.json({ quest });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/quests/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await questService.deleteQuest(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Admin Badge Management ---
+
+app.get('/api/admin/badges', async (c) => {
+    try {
+        const badges = await badgeService.getAllBadges();
+        return c.json({ badges });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/badges', async (c) => {
+    try {
+        const formData = await c.req.formData();
+        const name = formData.get('name') as string;
+        const description = (formData.get('description') as string) || '';
+        const type = (formData.get('type') as string) || 'achievement';
+        const iconFile = formData.get('icon') as File | null;
+
+        if (!name) return c.json({ error: 'Name is required' }, 400);
+
+        let icon_url = '';
+        if (iconFile && iconFile.size > 0) {
+            const ext = iconFile.name.split('.').pop() || 'png';
+            const fileName = `${Date.now()}_${name.toLowerCase().replace(/\s+/g, '_')}.${ext}`;
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'badges');
+            const { mkdirSync, writeFileSync } = await import('node:fs');
+            mkdirSync(dir, { recursive: true });
+            const buffer = Buffer.from(await iconFile.arrayBuffer());
+            writeFileSync(path.join(dir, fileName), buffer);
+            icon_url = `/uploads/badges/${fileName}`;
+        } else {
+            return c.json({ error: 'Icon file is required' }, 400);
+        }
+
+        const badge = await badgeService.createBadge({ name, description, icon_url, type });
+        return c.json({ badge });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/badges/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const formData = await c.req.formData();
+        const updateData: any = {};
+
+        const name = formData.get('name') as string;
+        const description = formData.get('description') as string;
+        const type = formData.get('type') as string;
+        if (name) updateData.name = name;
+        if (description !== null) updateData.description = description;
+        if (type) updateData.type = type;
+
+        const iconFile = formData.get('icon') as File | null;
+        if (iconFile && iconFile.size > 0) {
+            const ext = iconFile.name.split('.').pop() || 'png';
+            const fileName = `${Date.now()}_${(name || 'badge').toLowerCase().replace(/\s+/g, '_')}.${ext}`;
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'badges');
+            const { mkdirSync, writeFileSync } = await import('node:fs');
+            mkdirSync(dir, { recursive: true });
+            const buffer = Buffer.from(await iconFile.arrayBuffer());
+            writeFileSync(path.join(dir, fileName), buffer);
+            updateData.icon_url = `/uploads/badges/${fileName}`;
+        }
+
+        const badge = await badgeService.updateBadge(id, updateData);
+        return c.json({ badge });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/badges/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await badgeService.deleteBadge(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Admin Decoration Management ---
+
+app.get('/api/admin/decorations', async (c) => {
+    try {
+        const decorations = await decorationService.getAllDecorations();
+        return c.json({ decorations });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.post('/api/admin/decorations', async (c) => {
+    try {
+        const formData = await c.req.formData();
+        const name = formData.get('name') as string;
+        const description = (formData.get('description') as string) || '';
+        const type = (formData.get('type') as string) || 'regular';
+        const image_url_text = formData.get('image_url') as string; // For CSS decorations
+        const imageFile = formData.get('image') as File | null;
+
+        if (!name) return c.json({ error: 'Name is required' }, 400);
+
+        let image_url = image_url_text || '';
+        if (imageFile && imageFile.size > 0) {
+            const ext = imageFile.name.split('.').pop() || 'png';
+            const fileName = `${Date.now()}_${name.toLowerCase().replace(/\s+/g, '_')}.${ext}`;
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'decorations');
+            const { mkdirSync, writeFileSync } = await import('node:fs');
+            mkdirSync(dir, { recursive: true });
+            const buffer = Buffer.from(await imageFile.arrayBuffer());
+            writeFileSync(path.join(dir, fileName), buffer);
+            image_url = `/uploads/decorations/${fileName}`;
+        }
+
+        if (!image_url) return c.json({ error: 'Image or CSS decoration URL is required' }, 400);
+
+        const decoration = await decorationService.createDecoration({ name, description, image_url, type });
+        return c.json({ decoration });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/decorations/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const formData = await c.req.formData();
+        const updateData: any = {};
+
+        const name = formData.get('name') as string;
+        const description = formData.get('description') as string;
+        const type = formData.get('type') as string;
+        const image_url_text = formData.get('image_url') as string;
+        if (name) updateData.name = name;
+        if (description !== null) updateData.description = description;
+        if (type) updateData.type = type;
+        if (image_url_text) updateData.image_url = image_url_text;
+
+        const imageFile = formData.get('image') as File | null;
+        if (imageFile && imageFile.size > 0) {
+            const ext = imageFile.name.split('.').pop() || 'png';
+            const fileName = `${Date.now()}_${(name || 'decoration').toLowerCase().replace(/\s+/g, '_')}.${ext}`;
+            const dir = path.join(process.cwd(), 'public', 'uploads', 'decorations');
+            const { mkdirSync, writeFileSync } = await import('node:fs');
+            mkdirSync(dir, { recursive: true });
+            const buffer = Buffer.from(await imageFile.arrayBuffer());
+            writeFileSync(path.join(dir, fileName), buffer);
+            updateData.image_url = `/uploads/decorations/${fileName}`;
+        }
+
+        const decoration = await decorationService.updateDecoration(id, updateData);
+        return c.json({ decoration });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/decorations/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await decorationService.deleteDecoration(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // --- System Health ---
 
 app.get('/api/admin/system/health', async (c) => {
@@ -775,6 +1083,11 @@ app.post('/api/comments', zValidator('json', commentSchema), async (c) => {
             chapter_slug,
             Boolean(is_spoiler),
             media_url ?? undefined);
+
+        // Grant XP for comment
+        const { tierService, XP_AMOUNTS } = await import('./service/tierService');
+        await tierService.addXP(payload.id, XP_AMOUNTS.comment_post, 'Posted comment').catch(() => { });
+
         const userProfile: any = await userService.getUserById(payload.id);
 
         // Return with username for immediate display
@@ -1227,6 +1540,40 @@ app.get('/api/manga/slug/:slug', async (c) => {
 
         if (!data) {
             return c.json({ error: 'Manga not found' }, 404);
+        }
+
+        // Quest tracking: update progress for logged-in users (non-blocking, uses already-fetched data)
+        try {
+            let token = getCookie(c, 'auth_token');
+            if (!token) {
+                const authHeader = c.req.header('Authorization');
+                if (authHeader && authHeader.startsWith('Bearer ')) {
+                    token = authHeader.split(' ')[1];
+                }
+            }
+            if (token) {
+                const payload = await verifyToken(token);
+                if (payload) {
+                    // Track comics_read quest
+                    questService.updateQuestProgress(payload.id, 'comics_read').catch(() => { });
+
+                    // Grant XP for reading manga
+                    const { tierService, XP_AMOUNTS } = await import('./service/tierService');
+                    tierService.addXP(payload.id, XP_AMOUNTS.manga_read, 'Read manga').catch(() => { });
+
+                    // Track genre_read quest using already-fetched genres
+                    if (data.genres && data.genres.length > 0) {
+                        for (const genre of data.genres) {
+                            const genreName = typeof genre === 'string' ? genre : genre.name;
+                            if (genreName) {
+                                questService.updateQuestProgress(payload.id, 'genre_read', genreName).catch(() => { });
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            // Quest tracking should never block the main request
         }
 
         // Encrypt chapter links in all sources

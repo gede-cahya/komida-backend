@@ -59,10 +59,25 @@ export const users = pgTable('users', {
     avatar_url: text('avatar_url'),
     wallet_address: text('wallet_address').unique(),
     is_banned: boolean('is_banned').default(false),
+    xp: integer('xp').default(0),
+    tier: integer('tier').default(1),
     created_at: timestamp('created_at').defaultNow(),
 }, (table) => {
     return [
         uniqueIndex('idx_users_username').on(table.username),
+    ];
+});
+
+export const dailyUserActivity = pgTable('daily_user_activity', {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id').notNull().references(() => users.id),
+    date: text('date').notNull(), // stored as YYYY-MM-DD
+    xp_gained: integer('xp_gained').default(0),
+    actions_count: integer('actions_count').default(0),
+}, (table) => {
+    return [
+        uniqueIndex('idx_daily_activity_user_date').on(table.user_id, table.date),
+        index('idx_daily_activity_date').on(table.date)
     ];
 });
 
@@ -152,5 +167,43 @@ export const userBadges = pgTable('user_badges', {
     return [
         index('idx_user_badges_user').on(table.user_id),
         uniqueIndex('idx_user_badges_unique').on(table.user_id, table.badge_id),
+    ];
+});
+
+export const quests = pgTable('quests', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description'),
+    quest_type: text('quest_type').notNull(), // genre_read, comics_read, chapters_read
+    target_value: integer('target_value').default(1),
+    target_genre: text('target_genre'), // for genre-based quests
+    reward_type: text('reward_type').notNull().default('badge'), // badge, decoration, both
+    reward_badge_id: integer('reward_badge_id').references(() => badges.id),
+    reward_decoration_id: integer('reward_decoration_id').references(() => decorations.id),
+    is_active: boolean('is_active').default(true),
+    created_by: integer('created_by').references(() => users.id),
+    starts_at: timestamp('starts_at'),
+    expires_at: timestamp('expires_at'),
+    created_at: timestamp('created_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_quests_active').on(table.is_active),
+        index('idx_quests_type').on(table.quest_type),
+    ];
+});
+
+export const userQuests = pgTable('user_quests', {
+    id: serial('id').primaryKey(),
+    user_id: integer('user_id').notNull().references(() => users.id),
+    quest_id: integer('quest_id').notNull().references(() => quests.id),
+    progress: integer('progress').default(0),
+    is_completed: boolean('is_completed').default(false),
+    completed_at: timestamp('completed_at'),
+    created_at: timestamp('created_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_user_quests_user').on(table.user_id),
+        index('idx_user_quests_quest').on(table.quest_id),
+        uniqueIndex('idx_user_quests_unique').on(table.user_id, table.quest_id),
     ];
 });

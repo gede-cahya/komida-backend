@@ -65,6 +65,28 @@ export class AdminService {
         return results[0];
     }
 
+    async getTopActiveUsersToday(limit: number = 10) {
+        const today = new Date().toISOString().split('T')[0];
+        const { dailyUserActivity } = await import('../db/schema');
+
+        const activeUsers = await db.select({
+            id: usersTable.id,
+            username: usersTable.username,
+            display_name: usersTable.display_name,
+            avatar_url: usersTable.avatar_url,
+            xp: usersTable.xp,
+            xp_gained: dailyUserActivity.xp_gained,
+            actions_count: dailyUserActivity.actions_count
+        })
+            .from(dailyUserActivity)
+            .innerJoin(usersTable, eq(dailyUserActivity.user_id, usersTable.id))
+            .where(eq(dailyUserActivity.date, today))
+            .orderBy(desc(dailyUserActivity.xp_gained))
+            .limit(limit);
+
+        return activeUsers;
+    }
+
     async deleteUser(id: number) {
         await db.delete(usersTable).where(eq(usersTable.id, id));
     }

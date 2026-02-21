@@ -199,12 +199,42 @@ export class MangaService {
         }));
 
         const primary = rows[0];
+
+        // Lazy-load genres if empty (similar to chapter lazy-loading)
+        let genres = JSON.parse(primary.genres || '[]');
+        if (genres.length === 0) {
+            const scraper = this.scrapers.find(s => s.name === primary.source);
+            if (scraper) {
+                try {
+                    console.log(`[LazyLoad] Scraping missing genres for ${primary.title} (${primary.source})`);
+                    const detailed = await scraper.scrapeDetail(primary.link);
+                    if (detailed && detailed.genres && detailed.genres.length > 0) {
+                        genres = detailed.genres;
+                        // Update all rows for this manga with genres
+                        for (const row of rows) {
+                            await db.update(mangaTable)
+                                .set({
+                                    genres: JSON.stringify(genres),
+                                    synopsis: detailed.synopsis || row.synopsis,
+                                    author: detailed.author || row.author,
+                                    status: detailed.status || row.status,
+                                })
+                                .where(eq(mangaTable.id, row.id));
+                        }
+                        console.log(`[LazyLoad] Updated genres for ${primary.title}: ${genres.join(', ')}`);
+                    }
+                } catch (e) {
+                    console.error(`[LazyLoad] Failed to scrape genres for ${primary.title}:`, e);
+                }
+            }
+        }
+
         return {
             title: primary.title,
             image: primary.image,
             author: primary.author || 'Unknown',
             status: primary.status || 'Ongoing',
-            genres: JSON.parse(primary.genres || '[]'),
+            genres: genres,
             synopsis: primary.synopsis || '',
             sources: sources
         };

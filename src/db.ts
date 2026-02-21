@@ -60,6 +60,13 @@ export async function initDB() {
         console.log('Migrated: users.is_banned');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
+      // Add xp and tier columns
+      try {
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0`;
+        await queryClient`ALTER TABLE users ADD COLUMN IF NOT EXISTS tier INTEGER DEFAULT 1`;
+        console.log('Migrated: users xp and tier');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
       // Also ensure manga table has new columns if any
       try {
         await queryClient`ALTER TABLE manga ADD COLUMN IF NOT EXISTS popularity INTEGER DEFAULT 0`;
@@ -90,6 +97,22 @@ export async function initDB() {
         console.log('Migrated: chapter_cache table');
       } catch (e: any) { console.log('Migration info:', e.message); }
 
+      // Add daily_user_activity table
+      try {
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS daily_user_activity (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                date TEXT NOT NULL,
+                xp_gained INTEGER DEFAULT 0,
+                actions_count INTEGER DEFAULT 0,
+                UNIQUE(user_id, date)
+            )
+        `;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_daily_activity_date ON daily_user_activity(date)`;
+        console.log('Migrated: daily_user_activity table');
+      } catch (e: any) { console.log('Migration info:', e.message); }
+
       // Add announcements table
       try {
         await queryClient`
@@ -99,13 +122,66 @@ export async function initDB() {
                 type TEXT DEFAULT 'info',
                 is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP
+                expires_at TIMESTAMP,
+                admin_id INTEGER REFERENCES users(id),
+                image_url TEXT
             )
         `;
         await queryClient`CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active)`;
         await queryClient`CREATE INDEX IF NOT EXISTS idx_announcements_created ON announcements(created_at)`;
         console.log('Migrated: announcements table');
       } catch (e: any) { console.log('Migration info:', e.message); }
+
+      // --- NEW: Decorations & Badges Tables ---
+      try {
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS decorations (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                image_url TEXT NOT NULL,
+                type TEXT DEFAULT 'regular',
+                nft_contract_address TEXT,
+                nft_token_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS badges (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                icon_url TEXT NOT NULL,
+                type TEXT DEFAULT 'regular',
+                nft_contract_address TEXT,
+                nft_token_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS user_decorations (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                decoration_id INTEGER NOT NULL REFERENCES decorations(id),
+                is_equipped BOOLEAN DEFAULT FALSE,
+                acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_decorations_unique ON user_decorations(user_id, decoration_id)`;
+
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS user_badges (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                badge_id INTEGER NOT NULL REFERENCES badges(id),
+                is_equipped BOOLEAN DEFAULT TRUE,
+                acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_badges_unique ON user_badges(user_id, badge_id)`;
+
+        console.log('Migrated: Decorations and Badges tables');
+      } catch (e: any) { console.log('Migration error (Deco/Badge):', e.message); }
 
       await queryClient.end();
     } catch (err: any) {
@@ -152,6 +228,54 @@ export async function initDB() {
       ip_hash TEXT,
       visited_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       user_agent TEXT
+    )
+  `);
+
+  legacyDb.run(`
+    CREATE TABLE IF NOT EXISTS decorations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      image_url TEXT NOT NULL,
+      type TEXT DEFAULT 'regular',
+      nft_contract_address TEXT,
+      nft_token_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  legacyDb.run(`
+    CREATE TABLE IF NOT EXISTS badges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      icon_url TEXT NOT NULL,
+      type TEXT DEFAULT 'regular',
+      nft_contract_address TEXT,
+      nft_token_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  legacyDb.run(`
+    CREATE TABLE IF NOT EXISTS user_decorations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      decoration_id INTEGER NOT NULL,
+      is_equipped BOOLEAN DEFAULT 0,
+      acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, decoration_id)
+    )
+  `);
+
+  legacyDb.run(`
+    CREATE TABLE IF NOT EXISTS user_badges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      badge_id INTEGER NOT NULL,
+      is_equipped BOOLEAN DEFAULT 1,
+      acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, badge_id)
     )
   `);
 

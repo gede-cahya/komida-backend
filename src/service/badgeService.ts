@@ -84,6 +84,32 @@ export class BadgeService {
 
         return { success: true, newlyAcquired };
     }
+
+    // ─── Admin CRUD ───────────────────────────────────
+
+    async createBadge(data: { name: string; description?: string; icon_url: string; type?: string }) {
+        const [badge] = await db.insert(badgesTable).values({
+            name: data.name,
+            description: data.description,
+            icon_url: data.icon_url,
+            type: data.type || 'achievement',
+        }).returning();
+        return badge;
+    }
+
+    async updateBadge(id: number, data: Partial<{ name: string; description: string; icon_url: string; type: string }>) {
+        const [badge] = await db.update(badgesTable)
+            .set(data)
+            .where(eq(badgesTable.id, id))
+            .returning();
+        return badge;
+    }
+
+    async deleteBadge(id: number) {
+        // Remove user associations first
+        await db.delete(userBadgesTable).where(eq(userBadgesTable.badge_id, id));
+        await db.delete(badgesTable).where(eq(badgesTable.id, id));
+    }
 }
 
 export const badgeService = new BadgeService();

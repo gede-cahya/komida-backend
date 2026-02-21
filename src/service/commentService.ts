@@ -18,7 +18,8 @@ export class CommentService {
             username: usersTable.username,
             role: usersTable.role,
             display_name: usersTable.display_name,
-            avatar_url: usersTable.avatar_url
+            avatar_url: usersTable.avatar_url,
+            xp: usersTable.xp,
         })
             .from(commentsTable)
             .innerJoin(usersTable, eq(commentsTable.user_id, usersTable.id))
@@ -31,8 +32,9 @@ export class CommentService {
             .orderBy(desc(commentsTable.created_at));
 
         const comments = await query;
+        const { tierService } = await import('./tierService');
 
-        // Enrich comments with badges and active decoration
+        // Enrich comments with badges, tier, and active decoration
         const enrichedComments = await Promise.all(comments.map(async (comment: any) => {
             const [decoration] = await db.select({
                 image_url: decorationsTable.image_url
@@ -60,10 +62,13 @@ export class CommentService {
                     )
                 );
 
+            const tierInfo = tierService.getTierFromXP(comment.xp || 0);
+
             return {
                 ...comment,
                 decoration_url: decoration?.image_url || null,
-                badges
+                badges,
+                tier_info: tierInfo,
             };
         }));
 

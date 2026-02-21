@@ -93,50 +93,103 @@ export class DecorationService {
 
     async syncNFTDecorations(userId: number) {
         const [user]: any = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-        if (!user || !user.wallet_address) return { success: false, message: "No wallet linked" };
-
-        const nftDecorations = await db.select()
-            .from(decorationsTable)
-            .where(eq(decorationsTable.type, 'nft'));
+        if (!user) return { success: false, message: "User not found" };
 
         const newlyAcquired = [];
 
-        for (const decoration of nftDecorations) {
-            if (!decoration.nft_contract_address) continue;
+        // 1. Sync Regular Decorations
+        const regularDecorations = await db.select()
+            .from(decorationsTable)
+            .where(eq(decorationsTable.type, 'regular'));
 
-            try {
-                const balance = await this.client.readContract({
-                    address: decoration.nft_contract_address as Address,
-                    abi: MINIMAL_ABI,
-                    functionName: 'balanceOf',
-                    args: [user.wallet_address as Address],
+        for (const decoration of regularDecorations) {
+            const [existing] = await db.select()
+                .from(userDecorationsTable)
+                .where(
+                    and(
+                        eq(userDecorationsTable.user_id, userId),
+                        eq(userDecorationsTable.decoration_id, decoration.id)
+                    )
+                );
+
+            if (!existing) {
+                await db.insert(userDecorationsTable).values({
+                    user_id: userId,
+                    decoration_id: decoration.id,
                 });
+                newlyAcquired.push(decoration.name);
+            }
+        }
 
-                if (Number(balance) > 0) {
-                    // Check if already in user_decorations
-                    const [existing] = await db.select()
-                        .from(userDecorationsTable)
-                        .where(
-                            and(
-                                eq(userDecorationsTable.user_id, userId),
-                                eq(userDecorationsTable.decoration_id, decoration.id)
-                            )
-                        );
+        // 2. Sync NFT Decorations
+        if (user.wallet_address) {
+            const nftDecorations = await db.select()
+                .from(decorationsTable)
+                .where(eq(decorationsTable.type, 'nft'));
 
-                    if (!existing) {
-                        await db.insert(userDecorationsTable).values({
-                            user_id: userId,
-                            decoration_id: decoration.id,
-                        });
-                        newlyAcquired.push(decoration.name);
+            for (const decoration of nftDecorations) {
+                if (!decoration.nft_contract_address) continue;
+
+                try {
+                    const balance = await this.client.readContract({
+                        address: decoration.nft_contract_address as Address,
+                        abi: MINIMAL_ABI,
+                        functionName: 'balanceOf',
+                        args: [user.wallet_address as Address],
+                    });
+
+                    if (Number(balance) > 0) {
+                        // Check if already in user_decorations
+                        const [existing] = await db.select()
+                            .from(userDecorationsTable)
+                            .where(
+                                and(
+                                    eq(userDecorationsTable.user_id, userId),
+                                    eq(userDecorationsTable.decoration_id, decoration.id)
+                                )
+                            );
+
+                        if (!existing) {
+                            await db.insert(userDecorationsTable).values({
+                                user_id: userId,
+                                decoration_id: decoration.id,
+                            });
+                            newlyAcquired.push(decoration.name);
+                        }
                     }
+                } catch (e) {
+                    console.error(`Failed to verify NFT ownership for ${decoration.name}:`, e);
                 }
-            } catch (e) {
-                console.error(`Failed to verify NFT ownership for ${decoration.name}:`, e);
             }
         }
 
         return { success: true, newlyAcquired };
+    }
+
+    // ─── Admin CRUD ───────────────────────────────────
+
+    async createDecoration(data: { name: string; description?: string; image_url: string; type?: string }) {
+        const [decoration] = await db.insert(decorationsTable).values({
+            name: data.name,
+            description: data.description,
+            image_url: data.image_url,
+            type: data.type || 'regular',
+        }).returning();
+        return decoration;
+    }
+
+    async updateDecoration(id: number, data: Partial<{ name: string; description: string; image_url: string; type: string }>) {
+        const [decoration] = await db.update(decorationsTable)
+            .set(data)
+            .where(eq(decorationsTable.id, id))
+            .returning();
+        return decoration;
+    }
+
+    async deleteDecoration(id: number) {
+        // Remove user associations first
+        await db.delete(userDecorationsTable).where(eq(userDecorationsTable.decoration_id, id));
+        await db.delete(decorationsTable).where(eq(decorationsTable.id, id));
     }
 }
 
