@@ -1015,6 +1015,73 @@ app.get('/api/admin/system/health', async (c) => {
     }
 });
 
+// --- Bug Reports (Public) ---
+
+app.post('/api/bug-reports', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { title, description, steps, page_url, email } = body;
+
+        if (!title || !description) {
+            return c.json({ error: 'Title and description are required' }, 400);
+        }
+
+        const bugReport = await adminService.createBugReport({
+            title,
+            description,
+            steps: steps || '',
+            page_url: page_url || '',
+            email: email || ''
+        });
+
+        return c.json({ success: true, report: bugReport });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+// --- Bug Reports (Admin) ---
+
+app.get('/api/admin/bug-reports', async (c) => {
+    const page = Number(c.req.query('page')) || 1;
+    const limit = Number(c.req.query('limit')) || 20;
+    const status = c.req.query('status') || '';
+
+    try {
+        const result = await adminService.getAllBugReports(page, limit, status);
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.put('/api/admin/bug-reports/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        const body = await c.req.json();
+        const { status } = body;
+
+        if (!status || !['pending', 'resolved'].includes(status)) {
+            return c.json({ error: 'Invalid status' }, 400);
+        }
+
+        const report = await adminService.updateBugReportStatus(id, status);
+        return c.json({ report });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.delete('/api/admin/bug-reports/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    try {
+        await adminService.deleteBugReport(id);
+        return c.json({ success: true });
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // Upload Route
 app.post('/api/upload', async (c) => {
     try {

@@ -183,6 +183,25 @@ export async function initDB() {
         console.log('Migrated: Decorations and Badges tables');
       } catch (e: any) { console.log('Migration error (Deco/Badge):', e.message); }
 
+      // Add bug_reports table
+      try {
+        await queryClient`
+            CREATE TABLE IF NOT EXISTS bug_reports (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                steps TEXT,
+                page_url TEXT,
+                email TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status)`;
+        await queryClient`CREATE INDEX IF NOT EXISTS idx_bug_reports_created ON bug_reports(created_at)`;
+        console.log('Migrated: bug_reports table');
+      } catch (e: any) { console.log('Migration error (bug_reports):', e.message); }
+
       await queryClient.end();
     } catch (err: any) {
       console.error('Migration failed:', err);

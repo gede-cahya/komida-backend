@@ -207,3 +207,19 @@ export const userQuests = pgTable('user_quests', {
         uniqueIndex('idx_user_quests_unique').on(table.user_id, table.quest_id),
     ];
 });
+
+export const bugReports = pgTable('bug_reports', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    steps: text('steps'),
+    page_url: text('page_url'),
+    email: text('email'),
+    status: text('status').default('pending'),
+    created_at: timestamp('created_at').defaultNow(),
+}, (table) => {
+    return [
+        index('idx_bug_reports_status').on(table.status),
+        index('idx_bug_reports_created').on(table.created_at),
+    ];
+});

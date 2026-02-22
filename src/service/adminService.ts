@@ -1,6 +1,6 @@
 import { db } from '../db';
-import { manga as mangaTable, users as usersTable, comments as commentsTable, decorations as decorationsTable, badges as badgesTable } from '../db/schema';
-import { eq, like, desc, count, and } from 'drizzle-orm';
+import { manga as mangaTable, users as usersTable, comments as commentsTable, decorations as decorationsTable, badges as badgesTable, bugReports as bugReportsTable } from '../db/schema';
+import { eq, like, desc, count, and, sql } from 'drizzle-orm';
 import { mangaService } from './mangaService';
 
 export class AdminService {
@@ -259,6 +259,73 @@ export class AdminService {
 
     async deleteBadge(id: number) {
         await db.delete(badgesTable).where(eq(badgesTable.id, id));
+    }
+
+    // --- Bug Reports Management ---
+
+    async createBugReport(data: { title: string, description: string, steps?: string, page_url?: string, email?: string }) {
+        const results = await db.insert(bugReportsTable).values(data).returning();
+        return results[0];
+    }
+
+    async getAllBugReports(page: number = 1, limit: number = 20, status?: string) {
+        const offset = (page - 1) * limit;
+
+        let whereClause;
+        if (status && status !== 'all') {
+            whereClause = eq(bugReportsTable.status, status);
+        }
+
+        const reports = await db.select({
+            id: bugReportsTable.id,
+            title: bugReportsTable.title,
+            description: bugReportsTable.description,
+            steps: bugReportsTable.steps,
+            page_url: bugReportsTable.page_url,
+            email: bugReportsTable.email,
+            status: bugReportsTable.status,
+            created_at: bugReportsTable.created_at
+        })
+            .from(bugReportsTable)
+            .where(whereClause)
+            .orderBy(desc(bugReportsTable.created_at))
+            .limit(limit)
+            .offset(offset);
+
+        const [totalResult] = await db.select({ total: count() })
+            .from(bugReportsTable)
+            .where(whereClause);
+
+        const total = Number(totalResult.total);
+
+        return {
+            reports,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        };
+    }
+
+    async updateBugReportStatus(id: number, status: string) {
+        const results = await db.update(bugReportsTable)
+            .set({ status })
+            .where(eq(bugReportsTable.id, id))
+            .returning({
+                id: bugReportsTable.id,
+                title: bugReportsTable.title,
+                description: bugReportsTable.description,
+                steps: bugReportsTable.steps,
+                page_url: bugReportsTable.page_url,
+                email: bugReportsTable.email,
+                status: bugReportsTable.status,
+                created_at: bugReportsTable.created_at
+            });
+        return results[0];
+    }
+
+    async deleteBugReport(id: number) {
+        await db.delete(bugReportsTable).where(eq(bugReportsTable.id, id));
     }
 }
 
