@@ -1,6 +1,6 @@
 FROM oven/bun:latest
 
-# Only install minimal dependencies needed for Sharp
+# Install dependencies for Sharp
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     --no-install-recommends \
@@ -18,7 +18,7 @@ RUN bun install
 COPY . .
 
 # Expose backend port
-EXPOSE 3001
+EXPOSE 3005
 
 # Run the app
 CMD ["bun", "run", "src/index.ts"]
