@@ -1,4 +1,4 @@
-import { pgTable, serial, text, real, boolean, integer, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, real, boolean, integer, timestamp, index, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 
 export const manga = pgTable('manga', {
     id: serial('id').primaryKey(),
@@ -222,4 +222,32 @@ export const bugReports = pgTable('bug_reports', {
         index('idx_bug_reports_status').on(table.status),
         index('idx_bug_reports_created').on(table.created_at),
     ];
+});
+
+// Transactions table for payments
+export const transactions = pgTable('transactions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  transactionType: varchar('transaction_type', { length: 50 }).notNull(),
+  amount: integer('amount').notNull(),
+  currency: varchar('currency', { length: 10 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull(),
+  txHash: text('tx_hash'),
+  qrisTransactionId: text('qris_transaction_id'),
+  itemPurchasedId: integer('item_purchased_id'),
+  itemName: text('item_name'),
+  creditAmount: integer('credit_amount'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// User credits table
+export const userCredits = pgTable('user_credits', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().unique(),
+  balance: integer('balance').notNull().default(0),
+  baseChainBalance: varchar('base_chain_balance', { length: 50 }).default('0'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

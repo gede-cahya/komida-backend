@@ -8,6 +8,7 @@
     },
     "dependencies": {
         "@hono/zod-validator": "^0.7.6",
+        "@supabase/supabase-js": "^2.97.0",
         "cheerio": "^1.2.0",
         "dotenv": "^17.3.1",
         "drizzle-orm": "^0.45.1",
@@ -16,7 +17,7 @@
         "postgres": "^3.4.8",
         "sharp": "^0.34.5",
         "siwe": "^3.0.0",
-        "viem": "^2.46.2",
+        "viem": "^2.46.3",
         "zod": "^4.3.6"
     },
     "devDependencies": {

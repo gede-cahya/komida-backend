@@ -43,9 +43,10 @@ export class AnalyticsService {
 
         try {
             if (isPostgres) {
-                const query = sql`
-                    SELECT 
-                        manga_slug as slug, 
+                // Get top slugs first, then match with manga
+                const topSlugsQuery = sql`
+                    SELECT
+                        manga_slug as slug,
                         COUNT(id) as views
                     FROM manga_views
                     WHERE viewed_at > NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
@@ -53,13 +54,14 @@ export class AnalyticsService {
                     ORDER BY views DESC
                     LIMIT 10
                 `;
-                const topSlugs = await db.execute(query);
+                const topSlugs = await db.execute(topSlugsQuery);
 
                 const results = [];
                 for (const row of topSlugs) {
                     const rowSlug = row.slug as string;
                     const rowViews = Number(row.views);
 
+                    // Match slug with manga link (slug is part of the URL)
                     const mangaList = await db.select({
                         title: mangaTable.title,
                         image: mangaTable.image,
@@ -77,13 +79,8 @@ export class AnalyticsService {
                             views: rowViews
                         });
                     } else {
-                        results.push({
-                            title: rowSlug,
-                            image: '',
-                            source: '',
-                            slug: rowSlug,
-                            views: rowViews
-                        });
+                        // Manga not found in database, skip it
+                        console.log(`Manga not found for slug: ${rowSlug}`);
                     }
                 }
                 return results;
@@ -92,6 +89,7 @@ export class AnalyticsService {
                 const timeInterval = period === 'day' ? "'-1 day'" : period === 'week' ? "'-7 days'" : "'-30 days'";
                 const timeFilter = sql`datetime('now', ${timeInterval})`;
 
+                // Get top slugs first
                 const topSlugs = await db.select({
                     slug: mangaViews.manga_slug,
                     views: count(mangaViews.id)
@@ -107,6 +105,7 @@ export class AnalyticsService {
                     const rowSlug = row.slug as string;
                     const rowViews = Number(row.views);
 
+                    // Match slug with manga link
                     const mangaList = await db.select({
                         title: mangaTable.title,
                         image: mangaTable.image,
@@ -123,13 +122,8 @@ export class AnalyticsService {
                             views: rowViews
                         });
                     } else {
-                        results.push({
-                            title: rowSlug,
-                            image: '',
-                            source: '',
-                            slug: rowSlug,
-                            views: rowViews
-                        });
+                        // Manga not found in database, skip it
+                        console.log(`Manga not found for slug: ${rowSlug}`);
                     }
                 }
                 return results;

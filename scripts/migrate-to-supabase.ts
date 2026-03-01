@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm';
 /**
  * Migration Script: SQLite -> Supabase (PostgreSQL)
  * Run this with DATABASE_URL set to your Supabase connection string.
- * Example: DATABASE_URL=postgres://... bun scripts/migrate-to-supabase.ts
+ * Example: DATABASE_URL=<YOUR_DATABASE_URL> bun scripts/migrate-to-supabase.ts
  */
 
 async function migrate() {
