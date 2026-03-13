@@ -1,7 +1,7 @@
 import { createToken } from '../src/utils/auth';
 
 async function main() {
-    console.log('Testing Comment Deletion (Port 3002)...');
+    console.log('Testing Comment Deletion (Port 3481)...');
 
     // 1. Generate Token (Admin or User)
     // We'll mimic a user for this test
@@ -12,15 +12,15 @@ async function main() {
     // 2. We need a comment ID to delete.
 
     // Create
-    const createRes = await fetch('http://localhost:3002/api/comments', {
+    const createRes = await fetch('http://localhost:3481/api/comments', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            slug: 'delete-test-slug-3002',
-            content: 'To be deleted from 3002',
+            slug: 'delete-test-slug-3481',
+            content: 'To be deleted from 3481',
             is_spoiler: false
         })
     });
@@ -38,7 +38,7 @@ async function main() {
 
     // 3. Delete
     console.log(`Deleting comment ${commentId}...`);
-    const deleteRes = await fetch(`http://localhost:3002/api/comments/${commentId}`, {
+    const deleteRes = await fetch(`http://localhost:3481/api/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`

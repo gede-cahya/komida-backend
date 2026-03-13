@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start Cloudflare Tunnel for komida-api
-# Routes api.komida.site → localhost:3002
+# Routes api.komida.site → localhost:3481
 
 TUNNEL_NAME="komida-api"
 LOG_FILE="/tmp/cloudflared.log"
@@ -13,7 +13,7 @@ if pgrep -f "cloudflared tunnel run $TUNNEL_NAME" > /dev/null; then
 fi
 
 echo "🚀 Starting Cloudflare Tunnel: $TUNNEL_NAME"
-echo "   Route: api.komida.site → http://localhost:3002"
+echo "   Route: api.komida.site → http://localhost:3481"
 echo "   Log:   $LOG_FILE"
 
 nohup cloudflared tunnel run "$TUNNEL_NAME" > "$LOG_FILE" 2>&1 &

@@ -86,28 +86,40 @@ export class MangaService {
     async getPopularManga(page: number = 1, limit: number = 20) {
         const offset = (page - 1) * limit;
 
-        const subquery = db.selectDistinctOn([mangaTable.title], {
-            id: mangaTable.id,
-            title: mangaTable.title,
-            image: mangaTable.image,
-            rating: mangaTable.rating,
-            chapter: mangaTable.chapter,
-            type: mangaTable.type,
-            span: mangaTable.span,
-            link: mangaTable.link,
-            source: mangaTable.source,
-            last_updated: mangaTable.last_updated
-        })
-            .from(mangaTable)
-            .where(eq(mangaTable.is_trending, true))
-            .orderBy(mangaTable.title, desc(mangaTable.last_updated))
-            .as('sq');
+        const isPostgres = process.env.DATABASE_URL !== undefined;
 
-        return await db.select()
-            .from(subquery)
-            .orderBy(desc(subquery.last_updated))
-            .limit(limit)
-            .offset(offset);
+        if (isPostgres) {
+            const subquery = db.selectDistinctOn([mangaTable.title], {
+                id: mangaTable.id,
+                title: mangaTable.title,
+                image: mangaTable.image,
+                rating: mangaTable.rating,
+                chapter: mangaTable.chapter,
+                type: mangaTable.type,
+                span: mangaTable.span,
+                link: mangaTable.link,
+                source: mangaTable.source,
+                last_updated: mangaTable.last_updated
+            })
+                .from(mangaTable)
+                .where(eq(mangaTable.is_trending, true))
+                .orderBy(mangaTable.title, desc(mangaTable.last_updated))
+                .as('sq');
+
+            return await db.select()
+                .from(subquery)
+                .orderBy(desc(subquery.last_updated))
+                .limit(limit)
+                .offset(offset);
+        } else {
+            // SQLite Fallback (Distinct On not supported, we just do a regular select which might yield duplicates if they have the same title, but that shouldn't happen much for trending manga)
+            return await db.select()
+                .from(mangaTable)
+                .where(eq(mangaTable.is_trending, true))
+                .orderBy(desc(mangaTable.last_updated))
+                .limit(limit)
+                .offset(offset);
+        }
     }
 
     async getMangaDetail(source: string, link: string) {

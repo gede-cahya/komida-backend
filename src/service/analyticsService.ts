@@ -6,7 +6,7 @@ import { eq, and, sql, count, desc, gt } from 'drizzle-orm';
 export class AnalyticsService {
     async trackMangaView(slug: string) {
         try {
-            await db.insert(mangaViews).values({ manga_slug: slug });
+            await db.insert(mangaViews).values({ manga_slug: slug, viewed_at: new Date() });
         } catch (error) {
             console.error('Error tracking manga view:', error);
         }
@@ -28,7 +28,7 @@ export class AnalyticsService {
                 .limit(1);
 
             if (check.length === 0) {
-                await db.insert(siteVisits).values({ ip_hash: ipHash, user_agent: userAgent });
+                await db.insert(siteVisits).values({ ip_hash: ipHash, user_agent: userAgent, visited_at: new Date() });
             }
         } catch (error) {
             console.error('Error tracking site visit:', error);

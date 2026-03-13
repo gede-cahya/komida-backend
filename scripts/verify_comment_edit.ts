@@ -1,7 +1,7 @@
 import { createToken } from '../src/utils/auth';
 
 async function main() {
-    console.log('Testing Comment Edit & Delete (Port 3002)...');
+    console.log('Testing Comment Edit & Delete (Port 3481)...');
 
     // 1. Generate Token
     const user = { id: 1, username: 'testuser', role: 'user' };
@@ -10,7 +10,7 @@ async function main() {
 
     // 2. Create Comment
     console.log('Creating comment...');
-    const createRes = await fetch('http://localhost:3002/api/comments', {
+    const createRes = await fetch('http://localhost:3481/api/comments', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ async function main() {
 
     // 3. Edit Comment
     console.log('Editing comment...');
-    const editRes = await fetch(`http://localhost:3002/api/comments/${commentId}`, {
+    const editRes = await fetch(`http://localhost:3481/api/comments/${commentId}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ async function main() {
 
     // 4. Delete Comment
     console.log('Deleting comment...');
-    const deleteRes = await fetch(`http://localhost:3002/api/comments/${commentId}`, {
+    const deleteRes = await fetch(`http://localhost:3481/api/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
