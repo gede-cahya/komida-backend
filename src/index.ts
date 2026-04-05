@@ -1731,11 +1731,12 @@ app.get('/api/manga/search', async (c) => {
     return c.json({ results });
 });
 
-app.get('/api/manga/slug/:slug', async (c) => {
+// Dedicated view tracking endpoint - called only from the client when actually visiting a manga page
+app.post('/api/manga/view/:slug', async (c) => {
     try {
         const slug = c.req.param('slug');
 
-        // Track View only for valid manga slugs (not PHP files, config files, etc.)
+        // Validate slug to prevent tracking non-manga requests
         const isValidSlug = slug && 
             !slug.includes('.php') && 
             !slug.includes('.json') && 
@@ -1743,9 +1744,25 @@ app.get('/api/manga/slug/:slug', async (c) => {
             !slug.startsWith('setup') &&
             slug.length > 3;
         
-        if (isValidSlug) {
-            await analyticsService.trackMangaView(slug);
+        if (!isValidSlug) {
+            return c.json({ error: 'Invalid slug' }, 400);
         }
+
+        await analyticsService.trackMangaView(slug);
+        return c.json({ success: true });
+    } catch (e: any) {
+        console.error('Error tracking manga view:', e);
+        return c.json({ error: e.message }, 500);
+    }
+});
+
+app.get('/api/manga/slug/:slug', async (c) => {
+    try {
+        const slug = c.req.param('slug');
+
+        // View tracking removed from here - it was being triggered by Next.js Link prefetching
+        // on the home page, causing inflated view counts. Views are now tracked via a
+        // dedicated POST /api/manga/view/:slug endpoint called only from the client.
 
         const data = await mangaService.getMangaBySlug(slug);
 
