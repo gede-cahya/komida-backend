@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script_stop: true
+          script: |
+            export PATH="$HOME/.bun/bin:$PATH"
+            cd ~/komida-backend
+
+            echo "📥 Pulling latest changes..."
+            git fetch origin master
+            git reset --hard origin/master
+
+            echo "📦 Installing dependencies..."
+            bun install
+
+            echo "🔄 Restarting backend..."
+            sudo systemctl restart komida-backend
+
+            sleep 5
+            HEALTH=$(curl -s http://localhost:3481/health)
+            if echo "$HEALTH" | grep -q '"status":"ok"'; then
+              echo "✅ Deployment successful!"
+              echo "   $HEALTH"
+            else
+              echo "❌ Deployment failed!"
+              echo "   $HEALTH"
+              exit 1
+            fi
