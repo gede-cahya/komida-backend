@@ -385,7 +385,11 @@ export class SoftkomikScraper implements ScraperProvider {
                     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                     
                     // Use domcontentloaded instead of networkidle0 to prevent timeouts from ads/scripts
-                    await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                    try {
+                        await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                    } catch (e) {
+                         console.log(`[Softkomik] goto timed out, attempting to extract images anyway...`);
+                    }
                     
                     // Wait dynamically for at least one comic image to appear (Next.js can be slow on VPS)
                     try {
