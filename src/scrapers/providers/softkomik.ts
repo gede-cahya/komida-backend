@@ -397,6 +397,9 @@ export class SoftkomikScraper implements ScraperProvider {
                             const imgs = Array.from(document.querySelectorAll('img'));
                             return imgs.some(img => img.src && (img.src.includes('softkomik') || img.src.includes('img-file') || img.src.includes('webp')));
                         }, { timeout: 20000 });
+                        
+                        // Once the first image appears, Next.js is actively rendering the rest. Give it 4 seconds to finish.
+                        await new Promise(r => setTimeout(r, 4000));
                     } catch (e) {
                         console.log(`[Softkomik] Dynamic wait timed out, extracting whatever is available...`);
                     }
