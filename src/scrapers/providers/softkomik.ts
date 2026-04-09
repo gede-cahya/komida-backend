@@ -370,10 +370,17 @@ export class SoftkomikScraper implements ScraperProvider {
                 console.log(`[Softkomik] No images found in JSON. Falling back to Puppeteer to bypass anti-bot...`);
                 let browser;
                 try {
-                    browser = await puppeteer.launch({ 
-                        headless: true, 
-                        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
-                    });
+                    const puppeteerOpts: any = {
+                        headless: true,
+                        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                    };
+                    
+                    // On VPS (Linux), use the system chromium-browser if the bundled one is missing
+                    if (process.platform === 'linux') {
+                        puppeteerOpts.executablePath = '/usr/bin/chromium-browser';
+                    }
+                    
+                    browser = await puppeteer.launch(puppeteerOpts);
                     const page = await browser.newPage();
                     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                     
