@@ -387,8 +387,15 @@ export class SoftkomikScraper implements ScraperProvider {
                     // Use domcontentloaded instead of networkidle0 to prevent timeouts from ads/scripts
                     await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
                     
-                    // Give it a brief moment to render Next.js JSON or DOM elements
-                    await new Promise(r => setTimeout(r, 2000));
+                    // Wait dynamically for at least one comic image to appear (Next.js can be slow on VPS)
+                    try {
+                        await page.waitForFunction(() => {
+                            const imgs = Array.from(document.querySelectorAll('img'));
+                            return imgs.some(img => img.src && (img.src.includes('softkomik') || img.src.includes('img-file') || img.src.includes('webp')));
+                        }, { timeout: 20000 });
+                    } catch (e) {
+                        console.log(`[Softkomik] Dynamic wait timed out, extracting whatever is available...`);
+                    }
                     
                     images = await page.evaluate(() => {
                         const imgs = Array.from(document.querySelectorAll('img'));
