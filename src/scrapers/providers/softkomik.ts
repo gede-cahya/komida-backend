@@ -1,9 +1,13 @@
 import * as cheerio from 'cheerio';
 import { MangaSource, type ScrapedManga, type ScraperProvider, type MangaDetail, type MangaChapter, type ChapterData } from '../types';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+
+puppeteer.use(StealthPlugin());
 
 export class SoftkomikScraper implements ScraperProvider {
     name = MangaSource.SOFTKOMIK;
-    private readonly baseUrl = 'https://softkomik.com/';
+    private readonly baseUrl = 'https://softkomik.co/';
     private buildId: string | null = null;
 
     private async getBuildId(): Promise<string | null> {
@@ -301,8 +305,8 @@ export class SoftkomikScraper implements ScraperProvider {
             const buildId = await this.getBuildId();
             if (!buildId) return null;
 
-            // Link example: https://softkomik.com/manga-slug/chapter/chapter-number
-            // API example: https://softkomik.com/_next/data/BUILD_ID/manga-slug/chapter/chapter-number.json
+            // Link example: https://softkomik.co/manga-slug/chapter/chapter-number
+            // API example: https://softkomik.co/_next/data/BUILD_ID/manga-slug/chapter/chapter-number.json
             const urlObj = new URL(link);
             const pathParts = urlObj.pathname.split('/').filter(Boolean); // e.g., ['manga-slug', 'chapter', 'chapter-number']
 
@@ -339,7 +343,7 @@ export class SoftkomikScraper implements ScraperProvider {
 
             const rawImages = chapterData?.imageSrc || chapterData?.images || [];
 
-            if (Array.isArray(rawImages)) {
+            if (Array.isArray(rawImages) && rawImages.length > 0) {
                 images = rawImages
                     .map((s: any) => {
                         let url = typeof s === 'string' ? s : (s.url || s.src);
@@ -355,13 +359,39 @@ export class SoftkomikScraper implements ScraperProvider {
                             return `${this.baseUrl}${url}`;
                         } else {
                             // Handle absolute URLs that point to the wrong host (main domain)
-                            if (url.startsWith('https://softkomik.com/img-file/')) {
-                                return url.replace('https://softkomik.com/', 'https://image.softkomik.com/softkomik/');
+                            if (url.startsWith('https://softkomik.co/img-file/')) {
+                                return url.replace('https://softkomik.co/', 'https://image.softkomik.co/softkomik/');
                             }
                         }
                         return url;
                     })
                     .filter((s: string) => s && s.startsWith('http'));
+            } else {
+                console.log(`[Softkomik] No images found in JSON. Falling back to Puppeteer to bypass anti-bot...`);
+                let browser;
+                try {
+                    browser = await puppeteer.launch({ 
+                        headless: true, 
+                        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] 
+                    });
+                    const page = await browser.newPage();
+                    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+                    
+                    await page.goto(link, { waitUntil: 'networkidle0', timeout: 30000 });
+                    
+                    images = await page.evaluate(() => {
+                        const imgs = Array.from(document.querySelectorAll('img'));
+                        return imgs
+                            .map((img: any) => img.src)
+                            .filter((src: string) => src && (src.includes('image') || src.includes('.jpg') || src.includes('.webp') || src.includes('cosmic') || src.includes('komik') || src.includes('cdn')));
+                    });
+                    
+                    console.log(`[Softkomik] Extracted ${images.length} images via Puppeteer.`);
+                } catch (e) {
+                    console.error(`[Softkomik] Puppeteer extraction failed for ${link}:`, e);
+                } finally {
+                    if (browser) await browser.close();
+                }
             }
 
             let next: string | undefined;

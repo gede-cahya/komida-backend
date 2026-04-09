@@ -158,7 +158,7 @@ app.post('/api/auth/register', zValidator('json', registerSchema), async (c) => 
 app.post('/api/auth/login', zValidator('json', loginSchema), async (c) => {
     try {
         const body = c.req.valid('json');
-        const { username, password } = body;
+        const { username, password, rememberMe } = body;
 
         const user = await userService.getUserByUsername(username);
         if (!user || !(await userService.verifyPassword(password, user.password, user.is_banned))) {
@@ -167,13 +167,18 @@ app.post('/api/auth/login', zValidator('json', loginSchema), async (c) => {
 
         const token = await createToken({ id: user.id, username: user.username, role: user.role });
 
-        setCookie(c, 'auth_token', token, {
+        const cookieOptions: any = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
             path: '/'
-        });
+        };
+
+        if (rememberMe) {
+            cookieOptions.maxAge = 60 * 60 * 24 * 30; // 30 days
+        } // else acts as session cookie
+
+        setCookie(c, 'auth_token', token, cookieOptions);
 
         // Remove password from section
         const { password: _, ...userWithoutPass } = user;
