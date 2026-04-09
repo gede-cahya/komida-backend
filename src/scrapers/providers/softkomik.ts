@@ -384,7 +384,11 @@ export class SoftkomikScraper implements ScraperProvider {
                     const page = await browser.newPage();
                     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
                     
-                    await page.goto(link, { waitUntil: 'networkidle0', timeout: 30000 });
+                    // Use domcontentloaded instead of networkidle0 to prevent timeouts from ads/scripts
+                    await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
+                    
+                    // Give it a brief moment to render Next.js JSON or DOM elements
+                    await new Promise(r => setTimeout(r, 2000));
                     
                     images = await page.evaluate(() => {
                         const imgs = Array.from(document.querySelectorAll('img'));
