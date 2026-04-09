@@ -1927,10 +1927,10 @@ app.get('/api/image/proxy', async (c) => {
 console.log(`Server is running at 0.0.0.0:${process.env.PORT || 3005}`);
 
 
-// Start blockchain monitoring (every 30 seconds)
+// Start blockchain monitoring (every 120 seconds)
 setInterval(() => {
   blockchainService.monitorPayments();
-}, 30000);
+}, 120000);
 
 console.log('🔗 Blockchain monitoring started for wallet: 0x2645ceE3a2453D1B3d050796193504aD8e402d08');
 

@@ -27,31 +27,33 @@ export class BlockchainService {
   
   /**
    * Monitor incoming transactions ke wallet
-   * Call ini setiap 30 detik - 1 menit
+   * Call ini setiap 30 detik - 2 menit
    */
   async monitorPayments() {
     try {
-      console.log('🔍 Monitoring blockchain for payments...');
-      
       // Get latest block
       const currentBlock = await publicClient.getBlockNumber();
       
-      // Start from last processed block or 100 blocks ago
+      // Start from last processed block or 20 blocks ago
       const fromBlock = lastProcessedBlock 
         ? lastProcessedBlock + BigInt(1)
-        : currentBlock - BigInt(100);
+        : currentBlock - BigInt(20);
       
-      console.log(`📊 Checking blocks ${fromBlock} to ${currentBlock}`);
+      if (fromBlock > currentBlock) {
+          return; // No new blocks
+      }
       
       // Check direct ETH transfers to our wallet
       await this.checkDirectTransfers(fromBlock, currentBlock);
       
       // Update last processed block
       lastProcessedBlock = currentBlock;
-      
-      console.log(`✅ Blockchain check completed at block ${currentBlock}`);
     } catch (error: any) {
-      console.error('❌ Error monitoring blockchain:', error.message);
+      if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests'))) {
+         console.warn(`[Blockchain] RPC Rate limit (429). Retrying on next tick...`);
+      } else {
+         console.error('❌ Error monitoring blockchain:', error?.message || error);
+      }
     }
   }
   
@@ -62,20 +64,24 @@ export class BlockchainService {
     // Get all blocks in range
     for (let blockNum = Number(fromBlock); blockNum <= Number(toBlock); blockNum++) {
       try {
-        const block = await publicClient.getBlock({ blockNumber: BigInt(blockNum) });
+        const block = await publicClient.getBlock({ 
+            blockNumber: BigInt(blockNum),
+            includeTransactions: true // Batch fetch transactions
+        });
         
         // Check each transaction in block
-        for (const txHash of block.transactions) {
-          const tx = await publicClient.getTransaction({ hash: txHash });
-          
+        for (const tx of block.transactions) {
           // Check if transaction is to our wallet
-          if (tx.to?.toLowerCase() === PAYMENT_WALLET_ADDRESS.toLowerCase()) {
+          if (typeof tx !== 'string' && tx.to?.toLowerCase() === PAYMENT_WALLET_ADDRESS.toLowerCase()) {
             await this.processPayment(tx);
           }
         }
-      } catch (error) {
-        console.error(`Error checking block ${blockNum}:`, error);
-        // Continue to next block
+      } catch (error: any) {
+        if (error.message && error.message.includes('429')) {
+             throw error; // Bubble up rate limits to short-circuit the entire batch check for now
+        }
+        console.error(`Error checking block ${blockNum}:`, error?.message || error);
+        // Continue to next block if it's just a regular fetch error
       }
     }
   }
