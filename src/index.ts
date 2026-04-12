@@ -751,6 +751,15 @@ app.post('/api/admin/manga/update-all', async (c) => {
     }
 });
 
+app.post('/api/admin/manga/fix-images', async (c) => {
+    try {
+        const result = await adminService.fixCorruptedImages();
+        return c.json(result);
+    } catch (e: any) {
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 // --- Admin Comment Management ---
 
 app.get('/api/admin/active-users', async (c) => {

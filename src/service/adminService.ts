@@ -153,6 +153,12 @@ export class AdminService {
         return { message: 'Update started in background' };
     }
 
+    async fixCorruptedImages() {
+        // Run in background
+        mangaService.fixCorruptedImages().catch(e => console.error('[FixImages] Background task error:', e));
+        return { message: 'Fix corrupted images started in background' };
+    }
+
     async getMangaDetail(id: number) {
         const result = await db.select().from(mangaTable).where(eq(mangaTable.id, id));
         return result[0];

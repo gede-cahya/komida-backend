@@ -482,6 +482,48 @@ export class MangaService {
         console.log(`[UpdateAll] Completed. Updated: ${updatedCount}, Failed: ${failedCount}`);
         return { updated: updatedCount, failed: failedCount };
     }
+
+    async fixCorruptedImages() {
+        console.log('[FixImages] Searching for corrupted images...');
+        const corrupted = await db.select().from(mangaTable)
+            .where(or(
+                ilike(mangaTable.image, 'data:image%'),
+                eq(mangaTable.image, '')
+            ));
+
+        console.log(`[FixImages] Found ${corrupted.length} manga with corrupted images.`);
+        let updatedCount = 0;
+        let failedCount = 0;
+
+        for (const manga of corrupted) {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                console.log(`[FixImages] Fixing ${manga.title}...`);
+                const scraper = this.scrapers.find(s => s.name === manga.source);
+                if (!scraper) {
+                    failedCount++;
+                    continue;
+                }
+
+                const detail = await scraper.scrapeDetail(manga.link);
+                if (detail && detail.image && !detail.image.startsWith('data:image')) {
+                    await db.update(mangaTable)
+                        .set({ image: detail.image })
+                        .where(eq(mangaTable.id, manga.id));
+                    updatedCount++;
+                    console.log(`[FixImages] Fixed image for ${manga.title}`);
+                } else {
+                    failedCount++;
+                }
+            } catch (e) {
+                console.error(`[FixImages] Error fixing ${manga.title}:`, e);
+                failedCount++;
+            }
+        }
+        
+        console.log(`[FixImages] Completed. Fixed: ${updatedCount}, Failed: ${failedCount}`);
+        return { fixed: updatedCount, failed: failedCount };
+    }
 }
 
 export const mangaService = new MangaService();
