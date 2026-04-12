@@ -44,7 +44,11 @@ export class KiryuuScraper implements ScraperProvider {
 
                 const title = titleElement.text().trim();
                 const link = linkElement.attr('href') || '';
-                const image = imgElement.attr('src') || '';
+                let image = imgElement.attr('data-src') || imgElement.attr('data-lazy-src') || imgElement.attr('src') || '';
+                if (image.startsWith('data:image')) {
+                    // Fallback if data-src missing but another attr has it
+                    image = imgElement.attr('srcset')?.split(' ')[0] || image;
+                }
 
                 const chapter = chapters.first().find('p').text().trim() || chapters.first().text().trim();
                 const previous_chapter = chapters.eq(1).find('p').text().trim() || chapters.eq(1).text().trim();
@@ -131,7 +135,11 @@ export class KiryuuScraper implements ScraperProvider {
             const $ = cheerio.load(html);
 
             const title = $('h1[itemprop="name"]').first().text().trim() || $('h1').first().text().trim();
-            const image = $('img.wp-post-image').attr('src') || $('img[itemprop="image"]').attr('src') || $('.thumb img').attr('src') || '';
+            const imgEl = $('img.wp-post-image').first().length ? $('img.wp-post-image').first() : $('img[itemprop="image"]').first().length ? $('img[itemprop="image"]').first() : $('.thumb img').first();
+            let image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
+            if (image.startsWith('data:image')) {
+                image = imgEl.attr('srcset')?.split(' ')[0] || image;
+            }
 
             // New Kiryuu uses itemprop="description" div; fallback to old selectors
             const synopsis = $('div[itemprop="description"]').first().text().trim()
