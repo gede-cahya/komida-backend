@@ -495,29 +495,39 @@ export class MangaService {
         let updatedCount = 0;
         let failedCount = 0;
 
-        for (const manga of corrupted) {
-            try {
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                console.log(`[FixImages] Fixing ${manga.title}...`);
-                const scraper = this.scrapers.find(s => s.name === manga.source);
-                if (!scraper) {
-                    failedCount++;
-                    continue;
-                }
+        const CHUNK_SIZE = 5;
+        const DELAY_BETWEEN_CHUNKS = 600; // ms
 
-                const detail = await scraper.scrapeDetail(manga.link);
-                if (detail && detail.image && !detail.image.startsWith('data:image')) {
-                    await db.update(mangaTable)
-                        .set({ image: detail.image })
-                        .where(eq(mangaTable.id, manga.id));
-                    updatedCount++;
-                    console.log(`[FixImages] Fixed image for ${manga.title}`);
-                } else {
+        for (let i = 0; i < corrupted.length; i += CHUNK_SIZE) {
+            const chunk = corrupted.slice(i, i + CHUNK_SIZE);
+            const promises = chunk.map(async (manga) => {
+                try {
+                    const scraper = this.scrapers.find(s => s.name === manga.source);
+                    if (!scraper) {
+                        failedCount++;
+                        return;
+                    }
+
+                    const detail = await scraper.scrapeDetail(manga.link);
+                    if (detail && detail.image && !detail.image.startsWith('data:image') && detail.image !== '') {
+                        await db.update(mangaTable)
+                            .set({ image: detail.image })
+                            .where(eq(mangaTable.id, manga.id));
+                        updatedCount++;
+                        console.log(`[FixImages] Fixed image for ${manga.title} [${manga.source}]`);
+                    } else {
+                        failedCount++;
+                    }
+                } catch (e) {
+                    console.error(`[FixImages] Error fixing ${manga.title}:`, e);
                     failedCount++;
                 }
-            } catch (e) {
-                console.error(`[FixImages] Error fixing ${manga.title}:`, e);
-                failedCount++;
+            });
+
+            await Promise.all(promises);
+            // Delay after each chunk to prevent IP ban
+            if (i + CHUNK_SIZE < corrupted.length) {
+                await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_CHUNKS));
             }
         }
         
