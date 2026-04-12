@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { manga as mangaTable, chapterCache } from '../db/schema';
-import { eq, and, like, ilike, desc, sql } from 'drizzle-orm';
+import { eq, and, or, like, ilike, desc, sql } from 'drizzle-orm';
 import { KiryuuScraper } from '../scrapers/providers/kiryuu';
 import { ManhwaIndoScraper } from '../scrapers/providers/manhwaindo';
 
@@ -487,7 +487,7 @@ export class MangaService {
         console.log('[FixImages] Searching for corrupted images...');
         const corrupted = await db.select().from(mangaTable)
             .where(or(
-                ilike(mangaTable.image, 'data:image%'),
+                like(mangaTable.image, 'data:image%'),
                 eq(mangaTable.image, '')
             ));
 

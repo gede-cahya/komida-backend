@@ -1872,7 +1872,14 @@ app.get('/api/image/proxy', async (c) => {
 
     const source = c.req.query('source');
 
-    let referer = 'https://kiryuu03.com/';
+    let referer = 'https://kiryuu.id/';
+    try {
+        const parsedUrl = new URL(url);
+        referer = parsedUrl.origin + '/';
+    } catch (e) {
+        // Fallback if parsing fails
+    }
+
     if (url.includes('softkomik') || url.includes('softdevices') || source === 'Softkomik') {
         referer = 'https://softkomik.com/';
     } else if (url.includes('manhwaindo') || source === 'ManhwaIndo') {
