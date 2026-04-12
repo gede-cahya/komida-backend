@@ -137,7 +137,17 @@ export class MangaService {
             .where(ilike(mangaTable.title, `%${query}%`));
 
         if (results.length > 0) {
-            return results.map((row: any) => ({
+            const uniqueResults = [];
+            const seenTitles = new Set();
+            for (const row of results) {
+                const lowerTitle = row.title.toLowerCase().trim();
+                if (!seenTitles.has(lowerTitle)) {
+                    seenTitles.add(lowerTitle);
+                    uniqueResults.push(row);
+                }
+            }
+            
+            return uniqueResults.map((row: any) => ({
                 ...row,
                 genres: JSON.parse(row.genres || '[]'),
                 chapters: JSON.parse(row.chapters || '[]')
@@ -146,7 +156,18 @@ export class MangaService {
 
         // Fallback: search external scrapers if local DB has no results
         const externalResults = await this.searchExternal(query);
-        return externalResults.map((manga: any) => ({
+        
+        const uniqueExternal = [];
+        const seenExternalTitles = new Set();
+        for (const manga of externalResults) {
+            const lowerTitle = manga.title.toLowerCase().trim();
+            if (!seenExternalTitles.has(lowerTitle)) {
+                seenExternalTitles.add(lowerTitle);
+                uniqueExternal.push(manga);
+            }
+        }
+        
+        return uniqueExternal.map((manga: any) => ({
             title: manga.title,
             image: manga.image,
             chapter: manga.chapter || '?',
