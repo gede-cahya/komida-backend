@@ -6,6 +6,19 @@ export class ManhwaIndoScraper implements ScraperProvider {
     name = MangaSource.MANHWAINDO;
     private readonly baseUrl = 'https://www.manhwaindo.my/';
 
+    // Reroute old database links to the current active domain
+    private rerouteUrl(link: string): string {
+        try {
+            const url = new URL(link);
+            const base = new URL(this.baseUrl);
+            url.protocol = base.protocol;
+            url.host = base.host;
+            return url.toString();
+        } catch (e) {
+            return link;
+        }
+    }
+
     private formatIndonesianDate(dateStr: string): string {
         const months: { [key: string]: string } = {
             'Januari': 'January', 'Februari': 'February', 'Maret': 'March',
@@ -125,6 +138,7 @@ export class ManhwaIndoScraper implements ScraperProvider {
     }
 
     async scrapeDetail(link: string): Promise<MangaDetail | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`Scraping detail ${link}...`);
             const response = await fetch(link, {
@@ -195,6 +209,7 @@ export class ManhwaIndoScraper implements ScraperProvider {
     }
 
     async scrapeChapter(link: string): Promise<ChapterData | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`Scraping chapter ${link}...`);
             const response = await fetch(link, {

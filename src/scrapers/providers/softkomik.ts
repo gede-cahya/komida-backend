@@ -10,6 +10,19 @@ export class SoftkomikScraper implements ScraperProvider {
     private readonly baseUrl = 'https://softkomik.co/';
     private buildId: string | null = null;
 
+    // Reroute old database links to the current active domain
+    private rerouteUrl(link: string): string {
+        try {
+            const url = new URL(link);
+            const base = new URL(this.baseUrl);
+            url.protocol = base.protocol;
+            url.host = base.host;
+            return url.toString();
+        } catch (e) {
+            return link;
+        }
+    }
+
     private async getBuildId(): Promise<string | null> {
         if (this.buildId) return this.buildId;
         try {
@@ -205,6 +218,7 @@ export class SoftkomikScraper implements ScraperProvider {
     }
 
     async scrapeDetail(link: string): Promise<MangaDetail | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`[Softkomik] Scraping detail ${link}...`);
             const buildId = await this.getBuildId();
@@ -300,6 +314,7 @@ export class SoftkomikScraper implements ScraperProvider {
     }
 
     async scrapeChapter(link: string): Promise<ChapterData | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`[Softkomik] Scraping chapter ${link}...`);
             const buildId = await this.getBuildId();

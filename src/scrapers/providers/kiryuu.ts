@@ -4,7 +4,20 @@ import { MangaSource, type ScrapedManga, type ScraperProvider, type MangaDetail,
 
 export class KiryuuScraper implements ScraperProvider {
     name = MangaSource.KIRYUU;
-    private readonly baseUrl = 'https://kiryuu03.com/';
+    private readonly baseUrl = 'https://v3.kiryuu.to/';
+
+    // Reroute old database links to the current active domain
+    private rerouteUrl(link: string): string {
+        try {
+            const url = new URL(link);
+            const base = new URL(this.baseUrl);
+            url.protocol = base.protocol;
+            url.host = base.host;
+            return url.toString();
+        } catch (e) {
+            return link;
+        }
+    }
 
     async scrapePopular(): Promise<ScrapedManga[]> {
         try {
@@ -98,6 +111,7 @@ export class KiryuuScraper implements ScraperProvider {
     }
 
     async scrapeDetail(link: string): Promise<MangaDetail | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`Scraping detail ${link}...`);
             const response = await fetch(link, {
@@ -107,6 +121,8 @@ export class KiryuuScraper implements ScraperProvider {
             });
             if (!response.ok) {
                 console.error(`Failed to fetch detail: ${response.status}`);
+                 // Fallback: If 404/403, and this domain is newly changed, Next.js or Kiryuu might redirect. 
+                 // But fetch usually follows redirects!
                 return null;
             }
             const html = await response.text();
@@ -239,6 +255,7 @@ export class KiryuuScraper implements ScraperProvider {
     }
 
     async scrapeChapter(link: string): Promise<ChapterData | null> {
+        link = this.rerouteUrl(link);
         try {
             console.log(`Scraping chapter ${link}...`);
 
