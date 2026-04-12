@@ -390,11 +390,6 @@ export class SoftkomikScraper implements ScraperProvider {
                         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
                     };
                     
-                    // On VPS (Linux), use the system chromium-browser if the bundled one is missing
-                    if (process.platform === 'linux') {
-                        puppeteerOpts.executablePath = '/usr/bin/chromium-browser';
-                    }
-                    
                     browser = await puppeteer.launch(puppeteerOpts);
                     const page = await browser.newPage();
                     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -419,11 +414,46 @@ export class SoftkomikScraper implements ScraperProvider {
                         console.log(`[Softkomik] Dynamic wait timed out, extracting whatever is available...`);
                     }
                     
+                    // Scroll to bottom to trigger lazy loading
+                    await page.evaluate(async () => {
+                        await new Promise<void>((resolve) => {
+                            let totalHeight = 0;
+                            const distance = 500;
+                            const timer = setInterval(() => {
+                                const scrollHeight = document.body.scrollHeight;
+                                window.scrollBy(0, distance);
+                                totalHeight += distance;
+
+                                if(totalHeight >= scrollHeight - window.innerHeight){
+                                    clearInterval(timer);
+                                    resolve();
+                                }
+                            }, 100);
+                        });
+                    });
+                    
                     images = await page.evaluate(() => {
                         const imgs = Array.from(document.querySelectorAll('img'));
                         return imgs
-                            .map((img: any) => img.src)
-                            .filter((src: string) => src && (src.includes('image') || src.includes('.jpg') || src.includes('.webp') || src.includes('cosmic') || src.includes('komik') || src.includes('cdn')));
+                            .map((img: any) => {
+                                let realUrl = img.src;
+                                if (img.srcset) {
+                                    // Parse srcset and get the highest quality URL
+                                    const srcSetParts = img.srcset.split(',').pop();
+                                    if (srcSetParts) {
+                                        realUrl = srcSetParts.trim().split(' ')[0];
+                                    }
+                                }
+                                // Next.js image parsing: if it starts with /_next/image?url=
+                                if (realUrl && realUrl.includes('_next/image?url=')) {
+                                    const match = realUrl.match(/url=([^&]+)/);
+                                    if (match) {
+                                        realUrl = decodeURIComponent(match[1]);
+                                    }
+                                }
+                                return realUrl;
+                            })
+                            .filter((src: string) => src && !src.startsWith('data:image') && (src.includes('image') || src.includes('.jpg') || src.includes('.webp') || src.includes('myUploads') || src.includes('img-file')));
                     });
                     
                     console.log(`[Softkomik] Extracted ${images.length} images via Puppeteer.`);
