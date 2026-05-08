@@ -1,0 +1,1 @@
+import { SoftkomikScraper } from "./src/scrapers/providers/softkomik.ts"; async function test(){ const scr = new SoftkomikScraper(); const c = await scr.scrapeChapter("https://softkomik.co/sangeki-bahasa-indonesia/chapter/002"); console.log("IMAGES LENGTH:", c?.images?.length); if (c?.images?.length > 0) console.log("FIRST IMAGE:", c.images[0]); process.exit(0); } test();

@@ -1,0 +1,1 @@
+import { db } from "./src/db.ts"; import { manga } from "./src/db/schema.ts"; import { eq, like, or } from "drizzle-orm"; async function run() { const res = await db.select({id: manga.id}).from(manga).where(or(like(manga.image, "data:image%"), eq(manga.image, ""))); console.log("Corrupted count:", res.length); process.exit(0); } run();

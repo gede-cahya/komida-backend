@@ -1,0 +1,1 @@
+import { MangaService } from "./src/service/mangaService.ts"; const service = new MangaService(); async function run() { await service.fixCorruptedImages(); console.log("FINISHED"); process.exit(0); } run();

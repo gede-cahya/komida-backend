@@ -1,0 +1,804 @@
+nohup: ignoring input
+Connecting to PostgreSQL (Supabase)...
+Using Supabase PostgreSQL. Running auto-migration for missing columns...
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"email\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.email
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"display_name\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.display_name
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"avatar_url\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.avatar_url
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_banned\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users.is_banned
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"xp\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"tier\" of relation \"users\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: users xp and tier
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"popularity\" of relation \"manga\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: manga columns
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"is_spoiler\" of relation \"comments\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42701",
+  message: "column \"media_url\" of relation \"comments\" already exists, skipping",
+  file: "tablecmds.c",
+  line: "7471",
+  routine: "check_for_column_name_collision",
+}
+Migrated: comments columns
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"chapter_cache\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_chapter_cache_lookup\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+Migrated: chapter_cache table
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"daily_user_activity\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_daily_activity_date\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+Migrated: daily_user_activity table
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"announcements\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_announcements_active\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_announcements_created\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+Migrated: announcements table
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"decorations\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"badges\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"user_decorations\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_user_decorations_unique\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"user_badges\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_user_badges_unique\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+Migrated: Decorations and Badges tables
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"bug_reports\" already exists, skipping",
+  file: "parse_utilcmd.c",
+  line: "207",
+  routine: "transformCreateStmt",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_bug_reports_status\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+{
+  severity_local: "NOTICE",
+  severity: "NOTICE",
+  code: "42P07",
+  message: "relation \"idx_bug_reports_created\" already exists, skipping",
+  file: "index.c",
+  line: "889",
+  routine: "index_create",
+}
+Migrated: bug_reports table
+Database initialized
+Server is running at 0.0.0.0:3481
+🔗 Blockchain monitoring started for wallet: 0x2645ceE3a2453D1B3d050796193504aD8e402d08
+Started development server: http://0.0.0.0:3481
+<-- GET /health
+--> GET /health [32m200[0m 2ms
+<-- GET /api/popular
+--> GET /api/popular [33m401[0m 1ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 327ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 139ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 139ms
+<-- GET /api/popular
+--> GET /api/popular [33m401[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 0ms
+<-- GET /api/popular
+--> GET /api/popular [33m401[0m 0ms
+<-- GET /api/popular
+--> GET /api/popular [33m401[0m 0ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 143ms
+<-- GET /api/popular
+--> GET /api/popular [32m200[0m 138ms
+<-- GET /api/genres/supernatural?page=1
+--> GET /api/genres/supernatural?page=1 [33m401[0m 1ms
+<-- GET /api/manga/search?q=Sci-Fi
+--> GET /api/manga/search?q=Sci-Fi [33m401[0m 1ms
+<-- GET /api/manga/search?q=Slice%20of%20Life
+--> GET /api/manga/search?q=Slice%20of%20Life [33m401[0m 0ms
+<-- GET /api/manga/search?q=Supernatural
+--> GET /api/manga/search?q=Supernatural [33m401[0m 0ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 446ms
+<-- GET /api/genres/sci-fi?page=1
+--> GET /api/genres/sci-fi?page=1 [33m401[0m 1ms
+<-- GET /api/genres/slice-of-life?page=1
+--> GET /api/genres/slice-of-life?page=1 [33m401[0m 0ms
+<-- GET /api/genres/supernatural?page=1
+--> GET /api/genres/supernatural?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Slice%20of%20Life
+--> GET /api/manga/search?q=Slice%20of%20Life [33m401[0m 0ms
+<-- GET /api/manga/search?q=Sci-Fi
+--> GET /api/manga/search?q=Sci-Fi [33m401[0m 0ms
+<-- GET /api/manga/search?q=Supernatural
+--> GET /api/manga/search?q=Supernatural [33m401[0m 1ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/announcements/active
+--> GET /api/announcements/active [32m200[0m 204ms
+<-- GET /api/user/profile
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064012778.png&source=Kiryuu
+--> GET /api/user/profile [32m200[0m 338ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-30_092755924.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-30_093034028.png&source=Kiryuu
+<-- GET /api/manga/slug/the-tutorial-is-too-hard
+--> GET /api/manga/slug/the-tutorial-is-too-hard [33m401[0m 0ms
+<-- GET /api/manga/slug/the-knight-king-who-returned-with-a-god
+--> GET /api/manga/slug/the-knight-king-who-returned-with-a-god [33m401[0m 0ms
+<-- GET /api/manga/slug/office-worker-who-sees-fate
+--> GET /api/manga/slug/office-worker-who-sees-fate [33m401[0m 0ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-30_092755924.png&source=Kiryuu [32m200[0m 4s
+[Bun.serve]: request timed out after 10 seconds. Pass `idleTimeout` to configure.
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064012778.png&source=Kiryuu [32m200[0m 24s
+<-- GET /api/announcements/active
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi500241.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-27_171200716.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_064116894.png&source=Kiryuu
+--> GET /api/announcements/active [32m200[0m 415ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=Kiryuu
+<-- GET /api/user/profile
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2F99184428-d29e-436e-a038-1bbf85ef4938.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhow-to-live-as-an-illegal-healer%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fo%2Foffice-worker-who-sees-fate%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fl%2Flevel-999-goblin%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-tutorial-is-too-hard%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_093043321.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-knight-king-who-returned-with-a-god%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-29_123442710.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070840784.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-29_123703461.png&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi500241.jpg&source=Kiryuu [32m200[0m 737ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fl%2Flevel-999-goblin%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 365ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-tutorial-is-too-hard%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 473ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fo%2Foffice-worker-who-sees-fate%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 504ms
+--> GET /api/user/profile [32m200[0m 644ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhow-to-live-as-an-illegal-healer%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 626ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-knight-king-who-returned-with-a-god%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 585ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070840784.png&source=Kiryuu [32m200[0m 2s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_093043321.png&source=Kiryuu [32m200[0m 4s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=Kiryuu [32m200[0m 4s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-29_123703461.png&source=Kiryuu [32m200[0m 6s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2F99184428-d29e-436e-a038-1bbf85ef4938.jpg&source=Kiryuu [32m200[0m 10s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_064116894.png&source=Kiryuu [32m200[0m 20s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu [32m200[0m 33s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-29_123442710.png&source=Kiryuu [32m200[0m 44s
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 1ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 1ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 1ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi487412.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi500239.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi479514.jpg&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi487412.jpg&source=Kiryuu [32m200[0m 319ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi479514.jpg&source=Kiryuu [32m200[0m 492ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F03%2Fi500239.jpg&source=Kiryuu [32m200[0m 1s
+<-- GET /api/manga/slug/mahouka-koukou-no-rettousei-ichijou-masaki-tenkou-hen
+--> GET /api/manga/slug/mahouka-koukou-no-rettousei-ichijou-masaki-tenkou-hen [33m401[0m 0ms
+<-- GET /api/manga/slug/mahouka-koukou-no-rettousei-escape-hen
+--> GET /api/manga/slug/mahouka-koukou-no-rettousei-escape-hen [33m401[0m 0ms
+<-- GET /api/manga/slug/mahouka-koukou-no-rettousei-koritsu-hen
+--> GET /api/manga/slug/mahouka-koukou-no-rettousei-koritsu-hen [33m401[0m 0ms
+<-- GET /api/manga/slug/senchi-kara-kaette-kita-takashi-kun-futsuu-ni-koukou-seikatsu-wo-okuritai
+--> GET /api/manga/slug/senchi-kara-kaette-kita-takashi-kun-futsuu-ni-koukou-seikatsu-wo-okuritai [33m401[0m 0ms
+<-- GET /api/manga/slug/galaxias
+--> GET /api/manga/slug/galaxias [33m401[0m 0ms
+<-- GET /api/manga/slug/touhou-ibara-kasen-wild-and-horned-hermit
+--> GET /api/manga/slug/touhou-ibara-kasen-wild-and-horned-hermit [33m401[0m 0ms
+<-- GET /api/manga/slug/d-minus
+--> GET /api/manga/slug/d-minus [33m401[0m 0ms
+<-- GET /api/manga/slug/the-yaksha-of-joseon
+--> GET /api/manga/slug/the-yaksha-of-joseon [33m401[0m 0ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-27_171200716.png&source=Kiryuu [32m200[0m 314s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F04%2Fimage_2026-04-30_093034028.png&source=Kiryuu [32m200[0m 402s
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [32m200[0m 324ms
+<-- GET /api/manga/slug/how-to-live-as-an-illegal-healer
+<-- GET /api/manga/slug/level-999-goblin
+<-- GET /api/manga/slug/the-knight-king-who-returned-with-a-god
+<-- GET /api/manga/slug/office-worker-who-sees-fate
+<-- GET /api/manga/slug/fated-to-be-loved-by-villains
+[LazyLoad] Scraping missing genres for Level 999 Goblin (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/level-999-goblin/...
+<-- GET /api/popular?page=1
+<-- GET /api/manga/slug/high-martial-world-one-hand-to-overwhelm-three-thousand-emperors
+--> GET /api/manga/slug/the-knight-king-who-returned-with-a-god [32m200[0m 206ms
+--> GET /api/manga/slug/how-to-live-as-an-illegal-healer [32m200[0m 281ms
+[LazyLoad] Scraping missing genres for Fated To Be Loved By Villains (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/fated-to-be-loved-by-villains/...
+--> GET /api/manga/slug/office-worker-who-sees-fate [32m200[0m 246ms
+--> GET /api/manga/slug/high-martial-world-one-hand-to-overwhelm-three-thousand-emperors [32m200[0m 162ms
+--> GET /api/popular?page=1 [32m200[0m 172ms
+<-- GET /api/manga/search?q=Thriller
+Searching Kiryuu via API for "Thriller"...
+Searching ManhwaIndo for "Thriller"...
+Searching Softkomik for "Thriller"...
+[Keikomik] search("Thriller")
+<-- GET /api/manga/search?q=Sci-Fi
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+<-- GET /api/manga/search?q=Mystery
+Searching Kiryuu via API for "Sci-Fi"...
+Searching ManhwaIndo for "Sci-Fi"...
+Searching Softkomik for "Sci-Fi"...
+[Keikomik] search("Sci-Fi")
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+--> GET /api/manga/search?q=Mystery [32m200[0m 168ms
+[LazyLoad] Scraper returned no genres for Fated To Be Loved By Villains
+--> GET /api/manga/slug/fated-to-be-loved-by-villains [32m200[0m 2s
+[LazyLoad] Scraper returned no genres for Level 999 Goblin
+--> GET /api/manga/slug/level-999-goblin [32m200[0m 2s
+Found 36 results from Softkomik
+Found 36 results from Softkomik
+[ManhwaIndo] Found 4 items in search DOM.
+Found 4 results from ManhwaIndo
+--> GET /api/manga/search?q=Thriller [32m200[0m 3s
+[ManhwaIndo] Found 2 items in search DOM.
+Found 2 results from ManhwaIndo
+--> GET /api/manga/search?q=Sci-Fi [32m200[0m 3s
+<-- GET /api/manga/slug/one-day-my-sister-died
+<-- GET /api/manga/slug/gray-ash-a-new-life-in-the-dungeon-city
+<-- GET /api/manga/slug/im-being-misunderstood-as-a-soccer-genius
+<-- GET /api/manga/slug/the-dark-magician-transmigrates-after-66666-years
+<-- GET /api/manga/slug/watashi-no-koto-suki-ja-nakatta-no-ka-yo
+<-- GET /api/manga/slug/foresighting-politician-the-politician-who-can-see-the-future
+[LazyLoad] Scraping missing genres for One Day, My Sister Died (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/one-day-my-sister-died/...
+[LazyLoad] Scraping missing genres for Gray Ash: A New Life in the Dungeon City (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/gray-ash-a-new-life-in-the-dungeon-city/...
+[LazyLoad] Scraping missing genres for Watashi no Koto Suki ja Nakatta no ka yo!? (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/watashi-no-koto-suki-ja-nakatta-no-ka-yo/...
+--> GET /api/manga/slug/im-being-misunderstood-as-a-soccer-genius [32m200[0m 164ms
+--> GET /api/manga/slug/foresighting-politician-the-politician-who-can-see-the-future [32m200[0m 129ms
+--> GET /api/manga/slug/the-dark-magician-transmigrates-after-66666-years [32m200[0m 272ms
+[LazyLoad] Scraper returned no genres for Watashi no Koto Suki ja Nakatta no ka yo!?
+--> GET /api/manga/slug/watashi-no-koto-suki-ja-nakatta-no-ka-yo [32m200[0m 725ms
+[LazyLoad] Scraper returned no genres for Gray Ash: A New Life in the Dungeon City
+--> GET /api/manga/slug/gray-ash-a-new-life-in-the-dungeon-city [32m200[0m 899ms
+[LazyLoad] Scraper returned no genres for One Day, My Sister Died
+--> GET /api/manga/slug/one-day-my-sister-died [32m200[0m 1s
+<-- GET /api/manga/slug/hochiya-san-wa-amariaru
+[LazyLoad] Scraping missing genres for Hochiya-san wa Amariaru (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/hochiya-san-wa-amariaru/...
+[LazyLoad] Scraper returned no genres for Hochiya-san wa Amariaru
+--> GET /api/manga/slug/hochiya-san-wa-amariaru [32m200[0m 1s
+<-- GET /api/manga/slug/kidnapped-dragons
+--> GET /api/manga/slug/kidnapped-dragons [32m200[0m 134ms
+<-- GET /api/manga/slug/i-regressed-but-the-world-didnt-end
+<-- GET /api/manga/slug/reborn-on-the-demonic-cult-battlefield
+--> GET /api/manga/slug/i-regressed-but-the-world-didnt-end [32m200[0m 138ms
+[LazyLoad] Scraping missing genres for Reborn on the Demonic Cult Battlefield (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/reborn-on-the-demonic-cult-battlefield/...
+[LazyLoad] Scraper returned no genres for Reborn on the Demonic Cult Battlefield
+--> GET /api/manga/slug/reborn-on-the-demonic-cult-battlefield [32m200[0m 1s
+<-- GET /api/manga/search?q=Mystery
+<-- GET /api/manga/search?q=Thriller
+Searching Kiryuu via API for "Thriller"...
+Searching ManhwaIndo for "Thriller"...
+Searching Softkomik for "Thriller"...
+[Keikomik] search("Thriller")
+--> GET /api/manga/search?q=Mystery [32m200[0m 240ms
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+<-- GET /api/manga/slug/akatsuki-no-yona
+<-- GET /api/genres/sci-fi?page=1
+Error fetching genre ID for sci-fi: 473 |             return this.genreMapCache[slug];
+474 |         }
+475 | 
+476 |         try {
+477 |             const url = `${this.baseUrl}wp-json/wp/v2/genre?slug=${slug}`;
+478 |             const response = await fetch(url, {
+                                         ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/genre?slug=sci-fi". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/genre?slug=sci-fi",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async getGenreId (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:478:36)
+      at async scrapeByGenre (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:413:40)
+      at async getMangaByGenre (/home/cahya/2026/komida-backend/src/service/mangaService.ts:366:34)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1654:38)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+Genre ID not found for slug: sci-fi
+--> GET /api/genres/sci-fi?page=1 [32m200[0m 127ms
+[LazyLoad] Scraping missing genres for Akatsuki no Yona (ManhwaIndo)
+Scraping detail https://www.manhwaindo.my/series/akatsuki-no-yona/...
+<-- GET /api/manga/search?q=Sci-Fi
+Searching Kiryuu via API for "Sci-Fi"...
+Searching ManhwaIndo for "Sci-Fi"...
+Searching Softkomik for "Sci-Fi"...
+[Keikomik] search("Sci-Fi")
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+Found 36 results from Softkomik
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [32m200[0m 146ms
+Found 36 results from Softkomik
+[LazyLoad] Scraper returned no genres for Akatsuki no Yona
+--> GET /api/manga/slug/akatsuki-no-yona [32m200[0m 2s
+[ManhwaIndo] Found 4 items in search DOM.
+Found 4 results from ManhwaIndo
+[ManhwaIndo] Found 2 items in search DOM.
+Found 2 results from ManhwaIndo
+[Keikomik] Fetch error for https://keikomik.web.id/sitemap.xml: The operation timed out.
+--> GET /api/manga/search?q=Thriller [32m200[0m 12s
+<-- GET /api/manga/search?q=Sci-Fi
+Searching Kiryuu via API for "Sci-Fi"...
+Searching ManhwaIndo for "Sci-Fi"...
+Searching Softkomik for "Sci-Fi"...
+[Keikomik] search("Sci-Fi")
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Sci-Fi&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+[Keikomik] Fetch error for https://keikomik.web.id/sitemap.xml: The operation timed out.
+--> GET /api/manga/search?q=Sci-Fi [32m200[0m 12s
+[ManhwaIndo] Found 2 items in search DOM.
+Found 2 results from ManhwaIndo
+Found 36 results from Softkomik
+--> GET /api/manga/search?q=Sci-Fi [32m200[0m 4s
+<-- GET /api/popular?page=1
+<-- GET /api/manga/search?q=Mystery
+<-- GET /api/popular?page=1
+--> GET /api/manga/search?q=Mystery [32m200[0m 174ms
+--> GET /api/popular?page=1 [32m200[0m 200ms
+--> GET /api/popular?page=1 [32m200[0m 163ms
+<-- GET /api/manga/slug/the-ultimate-shut-in
+<-- GET /api/manga/search?q=Action
+--> GET /api/manga/slug/the-ultimate-shut-in [32m200[0m 165ms
+Searching Kiryuu via API for "Action"...
+Searching ManhwaIndo for "Action"...
+Searching Softkomik for "Action"...
+[Keikomik] search("Action")
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Action&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Action&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+<-- GET /api/manga/search?q=Thriller
+Searching Kiryuu via API for "Thriller"...
+Searching ManhwaIndo for "Thriller"...
+Searching Softkomik for "Thriller"...
+[Keikomik] search("Thriller")
+Error searching Kiryuu: 76 |     async search(query: string): Promise<ScrapedManga[]> {
+77 |         try {
+78 |             console.log(`Searching ${this.name} via API for "${query}"...`);
+79 |             const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
+80 | 
+81 |             const response = await fetch(url, {
+                                        ^
+error: ERR_TLS_CERT_ALTNAME_INVALID fetching "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed". For more information, pass `verbose: true` in the second argument to fetch()
+  path: "https://v3.kiryuu.to/wp-json/wp/v2/manga?search=Thriller&_embed",
+ errno: 0,
+  code: "ERR_TLS_CERT_ALTNAME_INVALID"
+
+      at async search (/home/cahya/2026/komida-backend/src/scrapers/providers/kiryuu.ts:81:36)
+      at async searchExternal (/home/cahya/2026/komida-backend/src/service/mangaService.ts:376:39)
+      at async searchManga (/home/cahya/2026/komida-backend/src/service/mangaService.ts:158:44)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:1747:40)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/src/index.ts:124:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async cors2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/cors/index.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono-rate-limiter/dist/index.js:295:13)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async secureHeaders2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/secure-headers/secure-headers.js:79:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async logger2 (/home/cahya/2026/komida-backend/node_modules/hono/dist/middleware/logger/index.js:38:11)
+      at async dispatch (/home/cahya/2026/komida-backend/node_modules/hono/dist/compose.js:22:23)
+      at async <anonymous> (/home/cahya/2026/komida-backend/node_modules/hono/dist/hono-base.js:301:31)
+
+Found 36 results from Softkomik
+[ManhwaIndo] Found 10 items in search DOM.
+Found 10 results from ManhwaIndo
+[ManhwaIndo] Found 4 items in search DOM.
+Found 4 results from ManhwaIndo
+Found 36 results from Softkomik
+--> GET /api/manga/search?q=Thriller [32m200[0m 6s
+--> GET /api/manga/search?q=Action [32m200[0m 7s
+<-- GET /api/admin/manga?page=1&limit=10&search=
+--> GET /api/admin/manga?page=1&limit=10&search= [32m200[0m 271ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070738925.png&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2F99184428-d29e-436e-a038-1bbf85ef4938.jpg&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_093043321.png&source=kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2F99184428-d29e-436e-a038-1bbf85ef4938.jpg&source=kiryuu [32m200[0m 9s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=kiryuu [32m200[0m 14s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_093043321.png&source=kiryuu [32m200[0m 19s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=kiryuu [32m200[0m 19s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_063745369.png&source=kiryuu [32m200[0m 17s
+<-- GET /api/popular?page=1
+<-- GET /api/manga/search?q=Adventure
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [32m200[0m 137ms
+<-- GET /api/manga/search?q=Mystery
+--> GET /api/popular?page=1 [32m200[0m 142ms
+--> GET /api/manga/search?q=Adventure [32m200[0m 233ms
+--> GET /api/manga/search?q=Mystery [32m200[0m 161ms
+<-- GET /api/manga/search?q=Action
+Searching Kiryuu via API for "Action"...
+Searching ManhwaIndo for "Action"...
+Searching Softkomik for "Action"...
+[Keikomik] search("Action")
+[ManhwaIndo] Found 10 items in search DOM.
+Found 10 results from ManhwaIndo
+Found 10 results from Kiryuu
+Found 36 results from Softkomik
+--> GET /api/manga/search?q=Action [32m200[0m 6s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070738925.png&source=kiryuu [32m200[0m 423s

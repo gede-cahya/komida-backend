@@ -1,0 +1,1 @@
+import puppeteer from "puppeteer-extra"; async function test(){ try { const b = await puppeteer.launch({headless: true}); console.log("Launched!"); await b.close(); } catch(e){ console.error(e); } process.exit(0); } test();

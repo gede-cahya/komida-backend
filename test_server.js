@@ -1,0 +1,1 @@
+const server = Bun.serve({ port: 3344, async fetch(req) { console.log("Incoming request"); await new Promise(r => setTimeout(r, 20000)); return new Response("OK"); } }); console.log("Server listening");
