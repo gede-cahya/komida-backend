@@ -19,7 +19,7 @@ jobs:
           script_stop: true
           script: |
             export PATH="$HOME/.bun/bin:$PATH"
-            cd ~/komida-backend
+            cd ~/projects/komida-backend
 
             echo "📥 Pulling latest changes..."
             git fetch origin master
@@ -29,7 +29,7 @@ jobs:
             bun install
 
             echo "🔄 Restarting backend..."
-            sudo systemctl restart komida-backend
+            pm2 restart komida-backend
 
             sleep 5
             HEALTH=$(curl -s http://localhost:3481/health)
