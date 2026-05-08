@@ -16,7 +16,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
           script: |
             export PATH="$HOME/.bun/bin:$PATH"
             cd ~/projects/komida-backend
@@ -29,7 +28,11 @@ jobs:
             bun install
 
             echo "🔄 Restarting backend..."
-            pm2 restart komida-backend
+            if pm2 list | grep -q "komida-backend"; then
+              pm2 restart komida-backend
+            else
+              pm2 start bun --name komida-backend -- run src/index.ts
+            fi
 
             sleep 5
             HEALTH=$(curl -s http://localhost:3481/health)
