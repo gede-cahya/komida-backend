@@ -52,9 +52,12 @@ app.use('*', cors({
         return null;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     credentials: true,
 }))
+
+import { apiKeyGuard } from './middleware/apiKeyGuard';
+app.use('*', apiKeyGuard);
 
 app.get('/health', (c) => {
     const mem = process.memoryUsage();
