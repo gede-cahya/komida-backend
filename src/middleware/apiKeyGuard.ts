@@ -21,6 +21,12 @@ const PUBLIC_PATHS = [
   '/health',
   '/api/uploads',
   '/api/image/proxy',
+  '/api/trending',
+  '/api/recent',
+  '/api/popular',
+  '/api/genres',
+  '/api/search',
+  '/api/manga',
 ];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
