@@ -10,6 +10,6 @@ cache/
 
 # Go build artifacts
 *.out
-imageproxy
+/imageproxy
 public/uploads/
 vendor/
