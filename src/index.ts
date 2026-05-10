@@ -1860,8 +1860,8 @@ const MAX_CONCURRENT_PROXY = 30; // Increased from 3 to 30 to handle grid loads
 sharp.cache(false);        // Disable Sharp's internal image cache
 sharp.concurrency(1);      // Limit Sharp to 1 processing thread
 
-// 1x1 Grey PNG for fallback
-const FALLBACK_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
+// 1x1 transparent PNG for fallback
+const FALLBACK_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 // --- Disk Cache for Image Proxy ---
 const CACHE_DIR = './cache/images';
