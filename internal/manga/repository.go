@@ -148,7 +148,7 @@ func (r *Repository) BySlug(ctx context.Context, slug string) (*Detail, error) {
 }
 
 func (r *Repository) Genres(ctx context.Context) ([]string, error) {
-	rows, err := r.pool.Query(ctx, `SELECT COALESCE(genres, '[]') FROM manga WHERE genres IS NOT NULL AND genres <> ''`)
+	rows, err := r.pool.Query(ctx, `SELECT COALESCE(genres, '[]') FROM manga WHERE genres IS NOT NULL AND jsonb_array_length(genres) > 0`)
 	if err != nil {
 		return nil, err
 	}
