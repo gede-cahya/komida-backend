@@ -78,7 +78,7 @@ func (h *ScraperHandler) detail(w http.ResponseWriter, r *http.Request) {
 			Chapters []map[string]any `json:"chapters"`
 		}{
 			Title:    detail.Title,
-			Image:    detail.Image,
+			Image:    secureImageURL(detail.Image),
 			Synopsis: detail.Synopsis,
 			Genres:   detail.Genres,
 			Author:   detail.Author,

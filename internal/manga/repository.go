@@ -92,6 +92,7 @@ func (r *Repository) Search(ctx context.Context, query string) ([]SearchItem, er
 			continue
 		}
 		seen[key] = struct{}{}
+		item.Image = secureImageURL(item.Image)
 		item.Chapters = validJSON(chapters, []byte("[]"))
 		item.Genres = validJSON(genres, []byte("[]"))
 		items = append(items, item)
@@ -133,12 +134,12 @@ func (r *Repository) BySlug(ctx context.Context, slug string) (*Detail, error) {
 			Link:     valueOrEmpty(rec.Link),
 			Rating:   valueOrZero(rec.Rating),
 			Chapters: chapters,
-			Image:    rec.Image,
+			Image:    secureImageURL(rec.Image),
 		})
 	}
 	return &Detail{
 		Title:    primary.Title,
-		Image:    primary.Image,
+		Image:    secureImageURL(primary.Image),
 		Author:   valueOrDefault(primary.Author, "Unknown"),
 		Status:   valueOrDefault(primary.Status, "Ongoing"),
 		Genres:   validJSON(primary.Genres, []byte("[]")),
@@ -214,6 +215,7 @@ func (r *Repository) ByGenre(ctx context.Context, genre string, page int, limit 
 			continue
 		}
 		seen[key] = struct{}{}
+		item.Image = secureImageURL(item.Image)
 		item.Chapters = validJSON(chapters, []byte("[]"))
 		item.Genres = validJSON(genres, []byte("[]"))
 		items = append(items, item)
@@ -233,6 +235,7 @@ func (r *Repository) queryList(ctx context.Context, sql string, args ...any) ([]
 		if err := rows.Scan(&item.ID, &item.Title, &item.Image, &item.Rating, &item.Chapter, &item.Type, &item.Span, &item.IsTrending, &item.Link, &item.Source, &item.LastUpdated); err != nil {
 			return nil, fmt.Errorf("scan manga list item: %w", err)
 		}
+		item.Image = secureImageURL(item.Image)
 		items = append(items, item)
 	}
 	return items, rows.Err()
@@ -254,6 +257,13 @@ type detailRecord struct {
 	Synopsis *string
 	Status   *string
 	Author   *string
+}
+
+func secureImageURL(url string) string {
+	if strings.HasPrefix(url, "http://") {
+		return "https://" + url[7:]
+	}
+	return url
 }
 
 func validJSON(raw string, fallback []byte) json.RawMessage {
