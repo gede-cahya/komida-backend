@@ -7,3 +7,9 @@ build/
 coverage/
 komida.db
 cache/
+
+# Go build artifacts
+*.out
+imageproxy
+public/uploads/
+vendor/

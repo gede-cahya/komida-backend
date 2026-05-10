@@ -4,7 +4,9 @@
     "type": "module",
     "scripts": {
         "dev": "PORT=3481 bun run --watch src/index.ts",
-        "test": "bun test"
+        "test": "bun test",
+        "imageproxy:dev": "go run ./cmd/imageproxy",
+        "imageproxy:test": "go test ./..."
     },
     "dependencies": {
         "@hono/zod-validator": "^0.7.6",

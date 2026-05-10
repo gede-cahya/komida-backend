@@ -10,6 +10,21 @@ services:
       - ./komida.db:/app/komida.db
     restart: always
 
+  imageproxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.imageproxy
+    container_name: komida-imageproxy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      IMAGE_PROXY_ADDR: ":3482"
+      IMAGE_PROXY_CACHE_DIR: /var/lib/komida/image-cache
+    ports:
+      - "3482:3482"
+    volumes:
+      - ./cache/images-go:/var/lib/komida/image-cache
+    restart: always
+
   tunnel:
     image: cloudflare/cloudflared:latest
     container_name: komida-tunnel
@@ -18,4 +33,5 @@ services:
       - /home/cahya/.cloudflared:/etc/cloudflared:ro
     depends_on:
       - backend
+      - imageproxy
     restart: always
