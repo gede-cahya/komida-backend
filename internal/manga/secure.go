@@ -20,6 +20,23 @@ func encryptChapterID(source string, link string) string {
 	return base64.RawURLEncoding.EncodeToString(out)
 }
 
+func decryptChapterID(id string) (*chapterIDPayload, error) {
+	key := []byte(secureKey)
+	enc, err := base64.RawURLEncoding.DecodeString(id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]byte, len(enc))
+	for i := range enc {
+		out[i] = enc[i] ^ key[i%len(key)]
+	}
+	var payload chapterIDPayload
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return nil, err
+	}
+	return &payload, nil
+}
+
 type chapterIDPayload struct {
 	Source string `json:"source"`
 	Link   string `json:"link"`

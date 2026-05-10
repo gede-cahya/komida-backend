@@ -102,10 +102,13 @@ func (h *ScraperHandler) chapter(w http.ResponseWriter, r *http.Request) {
 	link := legacyLink
 
 	if id != "" {
-		// decrypt is not needed for Go-to-Go; but Bun sends encrypted ids.
-		// We keep Bun endpoint for encrypted ids until full cutover.
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Encrypted id not supported in Go scraper yet"})
-		return
+		payload, err := decryptChapterID(id)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid chapter id"})
+			return
+		}
+		source = payload.Source
+		link = payload.Link
 	}
 
 	if source == "" || link == "" {
