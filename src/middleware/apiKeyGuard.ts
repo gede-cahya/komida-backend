@@ -20,6 +20,7 @@ const ALLOWED_ORIGINS = [
 const PUBLIC_PATHS = [
   '/health',
   '/api/uploads',
+  '/api/image/proxy',
 ];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
