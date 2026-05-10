@@ -1977,6 +1977,8 @@ app.get('/api/image/proxy', async (c) => {
 
     if (url.includes('softkomik') || url.includes('softdevices') || source === 'Softkomik') {
         referer = 'https://softkomik.com/';
+    } else if (url.includes('yuucdn') || source === 'Kiryuu') {
+        referer = 'https://kiryuu03.com/';
     } else if (url.includes('manhwaindo') || source === 'ManhwaIndo') {
         referer = 'https://www.manhwaindo.my/';
     }
