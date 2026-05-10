@@ -113,6 +113,7 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60, s-maxage=300")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }
