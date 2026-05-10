@@ -802,3 +802,261 @@ Found 10 results from Kiryuu
 Found 36 results from Softkomik
 --> GET /api/manga/search?q=Action [32m200[0m 6s
 --> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070738925.png&source=kiryuu [32m200[0m 423s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=kiryuu [32m200[0m 647s
+<-- GET /api/manga/search?q=Action
+--> GET /api/manga/search?q=Action [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Adventure
+--> GET /api/manga/search?q=Adventure [33m401[0m 0ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 1ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/genres/action?page=1
+--> GET /api/genres/action?page=1 [33m401[0m 1ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 1ms
+<-- GET /api/genres/comedy?page=1
+--> GET /api/genres/comedy?page=1 [33m401[0m 0ms
+<-- GET /api/genres/adventure?page=1
+--> GET /api/genres/adventure?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Action
+--> GET /api/manga/search?q=Action [33m401[0m 0ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/manga/search?q=Adventure
+--> GET /api/manga/search?q=Adventure [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 1ms
+<-- GET /api/manga/slug/edit.php
+--> GET /api/manga/slug/edit.php [33m401[0m 0ms
+<-- GET /api/manga/slug/info.php
+--> GET /api/manga/slug/info.php [33m401[0m 1ms
+<-- GET /api/manga/slug/autoload_classmap.php
+--> GET /api/manga/slug/autoload_classmap.php [33m401[0m 1ms
+<-- GET /api/manga/slug/bypass_1.php
+--> GET /api/manga/slug/bypass_1.php [33m401[0m 0ms
+<-- GET /api/manga/slug/class-wp-customize-manager-client.php
+--> GET /api/manga/slug/class-wp-customize-manager-client.php [33m401[0m 0ms
+<-- GET /api/manga/search?q=Drama
+--> GET /api/manga/search?q=Drama [33m401[0m 1ms
+<-- GET /api/manga/search?q=Adventure
+--> GET /api/manga/search?q=Adventure [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/genres/adventure?page=1
+--> GET /api/genres/adventure?page=1 [33m401[0m 0ms
+<-- GET /api/genres/comedy?page=1
+--> GET /api/genres/comedy?page=1 [33m401[0m 1ms
+<-- GET /api/genres/drama?page=1
+--> GET /api/genres/drama?page=1 [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 1ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/manga/search?q=Drama
+--> GET /api/manga/search?q=Drama [33m401[0m 0ms
+<-- GET /api/manga/search?q=Adventure
+--> GET /api/manga/search?q=Adventure [33m401[0m 0ms
+<-- GET /api/manga/slug/akuyaku-kizoku-ga-hirakinaotte-hametsu-flag-wo-jitsuryoku-de-tatakiotteitara-itsunomanika-heroine-tachi-kara-eiyuushi-sareru-you-ni-natta-ken
+--> GET /api/manga/slug/akuyaku-kizoku-ga-hirakinaotte-hametsu-flag-wo-jitsuryoku-de-tatakiotteitara-itsunomanika-heroine-tachi-kara-eiyuushi-sareru-you-ni-natta-ken [33m401[0m 0ms
+<-- GET /api/user/profile
+<-- GET /api/manga/slug/cong.php
+--> GET /api/manga/slug/cong.php [33m401[0m 1ms
+<-- GET /api/announcements/active
+<-- GET /api/manga/slug/db.php
+--> GET /api/manga/slug/db.php [33m401[0m 0ms
+<-- GET /api/manga/slug/i-became-a-hatchling
+--> GET /api/manga/slug/i-became-a-hatchling [33m401[0m 0ms
+--> GET /api/announcements/active [32m200[0m 971ms
+--> GET /api/user/profile [32m200[0m 2s
+<-- GET /api/manga/slug/mamono-mandragora-tte-baretara-toubatsu-desu-ka
+--> GET /api/manga/slug/mamono-mandragora-tte-baretara-toubatsu-desu-ka [33m401[0m 0ms
+<-- GET /api/manga/slug/block-template-utils-other.php
+--> GET /api/manga/slug/block-template-utils-other.php [33m401[0m 0ms
+<-- GET /api/manga/slug/alam.php
+--> GET /api/manga/slug/alam.php [33m401[0m 0ms
+<-- GET /api/manga/slug/adminfusm.php
+--> GET /api/manga/slug/adminfusm.php [33m401[0m 0ms
+<-- GET /api/manga/slug/raw.php
+--> GET /api/manga/slug/raw.php [33m401[0m 0ms
+<-- GET /api/manga/slug/media-new.php
+--> GET /api/manga/slug/media-new.php [33m401[0m 0ms
+<-- GET /api/manga/slug/class_api.php
+--> GET /api/manga/slug/class_api.php [33m401[0m 0ms
+<-- GET /api/manga/slug/install.php
+--> GET /api/manga/slug/install.php [33m401[0m 1ms
+<-- GET /api/manga/slug/plugin.php
+--> GET /api/manga/slug/plugin.php [33m401[0m 1ms
+<-- GET /api/manga/slug/class-wp-scripts-query.php
+--> GET /api/manga/slug/class-wp-scripts-query.php [33m401[0m 0ms
+<-- GET /api/manga/slug/function.php
+--> GET /api/manga/slug/function.php [33m401[0m 0ms
+<-- GET /api/manga/slug/comfunctions.php
+--> GET /api/manga/slug/comfunctions.php [33m401[0m 0ms
+<-- GET /api/manga/slug/class-wp-error-module.php
+--> GET /api/manga/slug/class-wp-error-module.php [33m401[0m 0ms
+<-- GET /api/manga/slug/adminfus.php
+--> GET /api/manga/slug/adminfus.php [33m401[0m 0ms
+<-- GET /api/manga/slug/as.php
+--> GET /api/manga/slug/as.php [33m401[0m 1ms
+<-- GET /api/manga/slug/setup-config.php
+--> GET /api/manga/slug/setup-config.php [33m401[0m 0ms
+<-- GET /api/manga/slug/default-filters-edit.php
+--> GET /api/manga/slug/default-filters-edit.php [33m401[0m 0ms
+<-- GET /api/manga/slug/install.php
+--> GET /api/manga/slug/install.php [33m401[0m 0ms
+<-- GET /api/manga/slug/av.php
+--> GET /api/manga/slug/av.php [33m401[0m 1ms
+<-- GET /api/manga/slug/about.php
+--> GET /api/manga/slug/about.php [33m401[0m 1ms
+<-- GET /api/manga/slug/item.php
+--> GET /api/manga/slug/item.php [33m401[0m 0ms
+<-- GET /api/manga/slug/file.php
+--> GET /api/manga/slug/file.php [33m401[0m 0ms
+<-- GET /api/manga/slug/content.php
+--> GET /api/manga/slug/content.php [33m401[0m 0ms
+<-- GET /api/manga/slug/goods.php
+--> GET /api/manga/slug/goods.php [33m401[0m 1ms
+<-- GET /api/manga/slug/how-to-live-as-an-illegal-healer
+[Quest] Tracking genres for user 20: ["Action","Adventure","Fantasy","Medical"]
+[Quest] Looking for genre_read quests matching genre: "Action"
+[Quest] Looking for genre_read quests matching genre: "Adventure"
+[Quest] Looking for genre_read quests matching genre: "Fantasy"
+[Quest] Looking for genre_read quests matching genre: "Medical"
+--> GET /api/manga/slug/how-to-live-as-an-illegal-healer [32m200[0m 271ms
+<-- GET /api/manga/slug/wp-2019.php
+--> GET /api/manga/slug/wp-2019.php [33m401[0m 0ms
+[Quest] Found 0 matching quests for genre "Medical"
+[Quest] Found 0 matching quests for genre "Action"
+[Quest] Found 0 matching quests for genre "Fantasy"
+[Quest] Found 0 matching quests for genre "Adventure"
+<-- POST /api/manga/view/how-to-live-as-an-illegal-healer
+--> POST /api/manga/view/how-to-live-as-an-illegal-healer [32m200[0m 150ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 2ms
+<-- GET /api/genres/fantasy?page=1
+--> GET /api/genres/fantasy?page=1 [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/genres/drama?page=1
+--> GET /api/genres/drama?page=1 [33m401[0m 0ms
+<-- GET /api/genres/comedy?page=1
+--> GET /api/genres/comedy?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Fantasy
+--> GET /api/manga/search?q=Fantasy [33m401[0m 0ms
+<-- GET /api/manga/search?q=Drama
+--> GET /api/manga/search?q=Drama [33m401[0m 1ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 345ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070738925.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064204493.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-tutorial-is-too-hard%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhow-to-live-as-an-illegal-healer%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064118819.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092826710.png&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-knight-king-who-returned-with-a-god%2Fthumbnail.jpg&source=ManhwaIndo
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-tutorial-is-too-hard%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 362ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhow-to-live-as-an-illegal-healer%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 441ms
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Ft%2Fthe-knight-king-who-returned-with-a-god%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 432ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_064116894.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu
+<-- GET /api/manga/slug/aching
+--> GET /api/manga/slug/aching [33m401[0m 1ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_064116894.png&source=Kiryuu [32m200[0m 3s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070738925.png&source=Kiryuu [32m200[0m 6s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064204493.png&source=Kiryuu [32m200[0m 10s
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092826710.png&source=Kiryuu [32m200[0m 14s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu [32m200[0m 14s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu [32m200[0m 6s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_065228507.png&source=Kiryuu [32m200[0m 20s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=Kiryuu [32m200[0m 30s
+<-- GET /api/user/profile
+--> GET /api/user/profile [32m200[0m 414ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092826710.png&source=Kiryuu
+<-- GET /api/announcements/active
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064118819.png&source=Kiryuu
+--> GET /api/announcements/active [32m200[0m 272ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092937148.png&source=Kiryuu [32m200[0m 7s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-08_092826710.png&source=Kiryuu [32m200[0m 10s
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064118819.png&source=Kiryuu [32m200[0m 12s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu [32m200[0m 3s
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [32m200[0m 138ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-06_070538968.png&source=Kiryuu [32m200[0m 16s
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F02%2Fi-regressed-but-the-world-didnt-end-835100-6NnXT4BX.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fr%2Freborn-on-the-demonic-cult-battlefield%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F12%2FKidnapped-Dragons.webp&source=Kiryuu
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhochiya-san-wa-amariaru%2Fthumbnail.jpg&source=ManhwaIndo
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fr%2Freborn-on-the-demonic-cult-battlefield%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 221ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fcover.softdevices.my.id%2Fsoftkomik-cover%2Fuploads-cover-2%2Fthe-dark-magician-transmigrates-after-66666-years%2Fthe-dark-magician-transmigrates-after-66666-years.webp&source=Softkomik
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F01%2FForesighting-Politician-The-Politician-Who-Can-See-the-Future.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fi3.wp.com%2Fwww.manhwaindo.my%2Fwp-content%2Fuploads%2F2026%2F01%2F1767942268-5032-i491746.jpg&source=ManhwaIndo
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fh%2Fhochiya-san-wa-amariaru%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 237ms
+<-- GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fa%2Fakatsuki-no-yona%2Fthumbnail.jpg&source=ManhwaIndo
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2024%2F12%2Fim-being-misunderstood-as-a-soccer-genius-269871-jSb80mCo.jpg&source=Kiryuu
+--> GET /api/image/proxy?url=http%3A%2F%2Fkacu.gmbr.pro%2Fuploads%2Fmanga-images%2Fa%2Fakatsuki-no-yona%2Fthumbnail.jpg&source=ManhwaIndo [32m200[0m 157ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fi3.wp.com%2Fwww.manhwaindo.my%2Fwp-content%2Fuploads%2F2026%2F01%2F1767942268-5032-i491746.jpg&source=ManhwaIndo [32m200[0m 581ms
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F03%2Frainbow-bridge-watchman-987483-E0wEU2PZ.webp&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2021%2F03%2Fthe-undefeatable-swordsman-826419-ecvaMWx9.jpg&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F12%2FHigh-Martial-World.png&source=Kiryuu
+<-- GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2023%2F01%2Fleveling-in-the-future-apex-future-martial-arts-765816-xMorRiCB.jpg&source=Kiryuu
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F01%2FForesighting-Politician-The-Politician-Who-Can-See-the-Future.jpg&source=Kiryuu [32m200[0m 2s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F02%2Fi-regressed-but-the-world-didnt-end-835100-6NnXT4BX.jpg&source=Kiryuu [32m200[0m 2s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F03%2Frainbow-bridge-watchman-987483-E0wEU2PZ.webp&source=Kiryuu [32m200[0m 2s
+<-- GET /api/announcements/active
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2023%2F01%2Fleveling-in-the-future-apex-future-martial-arts-765816-xMorRiCB.jpg&source=Kiryuu [32m200[0m 2s
+[Proxy] Fetch failed: AbortError - https://cover.softdevices.my.id/softkomik-cover/uploads-cover-2/the-dark-magician-transmigrates-after-66666-years/the-dark-magician-transmigrates-after-66666-years.webp
+--> GET /api/image/proxy?url=https%3A%2F%2Fcover.softdevices.my.id%2Fsoftkomik-cover%2Fuploads-cover-2%2Fthe-dark-magician-transmigrates-after-66666-years%2Fthe-dark-magician-transmigrates-after-66666-years.webp&source=Softkomik [32m200[0m 3s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F12%2FKidnapped-Dragons.webp&source=Kiryuu [32m200[0m 3s
+--> GET /api/announcements/active [32m200[0m 223ms
+[Proxy] Fetch failed: AbortError - https://v3.kiryuu.to/wp-content/uploads/2024/12/im-being-misunderstood-as-a-soccer-genius-269871-jSb80mCo.jpg
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2024%2F12%2Fim-being-misunderstood-as-a-soccer-genius-269871-jSb80mCo.jpg&source=Kiryuu [32m200[0m 3s
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2021%2F03%2Fthe-undefeatable-swordsman-826419-ecvaMWx9.jpg&source=Kiryuu [32m200[0m 3s
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv3.kiryuu.to%2Fwp-content%2Fuploads%2F2025%2F12%2FHigh-Martial-World.png&source=Kiryuu [32m200[0m 13s
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/genres/fantasy?page=1
+--> GET /api/genres/fantasy?page=1 [33m401[0m 0ms
+<-- GET /api/genres/comedy?page=1
+--> GET /api/genres/comedy?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Comedy
+--> GET /api/manga/search?q=Comedy [33m401[0m 0ms
+<-- GET /api/manga/search?q=Fantasy
+--> GET /api/manga/search?q=Fantasy [33m401[0m 0ms
+<-- GET /api/trending
+--> GET /api/trending [33m401[0m 0ms
+<-- GET /api/recent
+--> GET /api/recent [33m401[0m 0ms
+<-- GET /api/genres/drama?page=1
+--> GET /api/genres/drama?page=1 [33m401[0m 0ms
+<-- GET /api/manga/search?q=Drama
+--> GET /api/manga/search?q=Drama [33m401[0m 0ms
+<-- GET /api/popular?page=1
+--> GET /api/popular?page=1 [33m401[0m 0ms
+<-- GET /api/manga/slug/kuso-onna-ni-sachiare
+--> GET /api/manga/slug/kuso-onna-ni-sachiare [33m401[0m 1ms
+<-- GET /api/manga/slug/uchi-no-maid-ga-class-no-suki-na-ko-ni-nite-iru
+--> GET /api/manga/slug/uchi-no-maid-ga-class-no-suki-na-ko-ni-nite-iru [33m401[0m 1ms
+--> GET /api/image/proxy?url=https%3A%2F%2Fv5.kiryuu.to%2Fwp-content%2Fuploads%2F2026%2F05%2Fimage_2026-05-07_064118819.png&source=Kiryuu [32m200[0m 155s

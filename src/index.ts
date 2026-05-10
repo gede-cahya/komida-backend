@@ -15,7 +15,9 @@ import { loginSchema, registerSchema, commentSchema, userUpdateSchema, mangaUpda
 import sharp from 'sharp';
 import { encryptData, decryptData } from './utils/secure';
 import { serveStatic } from 'hono/bun';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, readFile, access, stat, readdir, unlink } from 'fs/promises';
+import { constants } from 'fs';
+import { createHash } from 'crypto';
 import { join } from 'path';
 import { generateSiweNonce, parseSiweMessage } from 'viem/siwe';
 import { createPublicClient, http, verifyMessage } from 'viem';
@@ -1861,12 +1863,102 @@ sharp.concurrency(1);      // Limit Sharp to 1 processing thread
 // 1x1 Grey PNG for fallback
 const FALLBACK_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
 
+// --- Disk Cache for Image Proxy ---
+const CACHE_DIR = './cache/images';
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_MAX_SIZE_BYTES = 3 * 1024 * 1024 * 1024; // 3GB max
+
+function getCachePaths(url: string) {
+    const hash = createHash('sha256').update(url).digest('hex');
+    const dir = join(CACHE_DIR, hash.substring(0, 2), hash.substring(2, 4));
+    const basePath = join(dir, hash);
+    return { dataPath: `${basePath}.bin`, metaPath: `${basePath}.json`, dir };
+}
+
+async function getCachedImage(url: string): Promise<{ data: Buffer; contentType: string } | null> {
+    const { dataPath, metaPath } = getCachePaths(url);
+    try {
+        await access(dataPath, constants.F_OK);
+        await access(metaPath, constants.F_OK);
+
+        const metaRaw = await readFile(metaPath, 'utf-8');
+        const meta = JSON.parse(metaRaw);
+
+        if (Date.now() - meta.cachedAt > CACHE_MAX_AGE_MS) return null;
+
+        const data = await readFile(dataPath);
+        if (data.byteLength === 0) return null;
+
+        return { data, contentType: meta.contentType || 'image/jpeg' };
+    } catch {
+        return null;
+    }
+}
+
+async function saveImageToCache(url: string, data: Buffer, contentType: string) {
+    const { dataPath, metaPath, dir } = getCachePaths(url);
+    try {
+        await mkdir(dir, { recursive: true });
+        await writeFile(dataPath, data);
+        await writeFile(metaPath, JSON.stringify({ url, contentType, cachedAt: Date.now(), size: data.byteLength }));
+    } catch (e) {
+        console.error('[Cache] Failed to save:', e);
+    }
+}
+
+async function cleanupImageCache() {
+    try {
+        const entries = await readdir(CACHE_DIR, { recursive: true, withFileTypes: true });
+        let totalSize = 0;
+        const files: { path: string; size: number; mtime: Date }[] = [];
+
+        for (const entry of entries) {
+            if (!entry.isFile() || !entry.name.endsWith('.bin')) continue;
+            const fullPath = join(entry.parentPath || CACHE_DIR, entry.name);
+            const s = await stat(fullPath);
+            totalSize += s.size;
+            files.push({ path: fullPath, size: s.size, mtime: s.mtime });
+        }
+
+        if (totalSize > CACHE_MAX_SIZE_BYTES) {
+            // Sort by oldest access time and delete until under limit
+            files.sort((a, b) => a.mtime.getTime() - b.mtime.getTime());
+            let toFree = totalSize - CACHE_MAX_SIZE_BYTES;
+            for (const f of files) {
+                if (toFree <= 0) break;
+                try {
+                    await unlink(f.path);
+                    const metaPath = f.path.replace('.bin', '.json');
+                    await unlink(metaPath);
+                    toFree -= f.size;
+                } catch {
+                    // ignore cleanup errors
+                }
+            }
+            console.log(`[Cache] Cleaned up oldest files. Freed ~${Math.round((totalSize - CACHE_MAX_SIZE_BYTES) / 1024 / 1024)}MB`);
+        }
+    } catch {
+        // cache dir might not exist yet
+    }
+}
+
+// Run cache cleanup every 6 hours
+setInterval(cleanupImageCache, 6 * 60 * 60 * 1000);
+
 app.get('/api/image/proxy', async (c) => {
     const url = c.req.query('url');
     if (!url) return c.text('Missing url', 400);
 
+    // --- 1. Check disk cache first ---
+    const cached = await getCachedImage(url);
+    if (cached) {
+        c.header('Content-Type', cached.contentType);
+        c.header('Cache-Control', 'public, max-age=604800'); // 7 days browser cache
+        c.header('X-Cache', 'HIT');
+        return c.body(cached.data as any);
+    }
+
     if (activeProxyRequests >= MAX_CONCURRENT_PROXY) {
-        // Return fallback instead of 503 to prevent Next.js image error
         c.header('Content-Type', 'image/png');
         c.header('Cache-Control', 'public, max-age=60');
         return c.body(FALLBACK_IMAGE as any);
@@ -1891,7 +1983,7 @@ app.get('/api/image/proxy', async (c) => {
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+        const timeout = setTimeout(() => controller.abort(), 3000);
 
         try {
             const response = await fetch(url, {
@@ -1910,25 +2002,24 @@ app.get('/api/image/proxy', async (c) => {
                 return c.body(FALLBACK_IMAGE as any);
             }
 
-            const contentType = response.headers.get('content-type');
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
             const arrayBuffer = await response.arrayBuffer();
 
             if (arrayBuffer.byteLength === 0) throw new Error('Empty response');
 
-            if (contentType && (contentType.includes('avif') || contentType.includes('gif'))) {
-                c.header('Content-Type', contentType);
-                c.header('Cache-Control', 'public, max-age=31536000');
-                return c.body(arrayBuffer as any);
-            }
+            const data = Buffer.from(arrayBuffer);
 
-            c.header('Content-Type', contentType || 'application/octet-stream');
+            // --- 2. Save to disk cache ---
+            await saveImageToCache(url, data, contentType);
+
+            c.header('Content-Type', contentType);
             c.header('Cache-Control', 'public, max-age=31536000');
-            return c.body(arrayBuffer as any);
+            c.header('X-Cache', 'MISS');
+            return c.body(data as any);
 
         } catch (fetchError: any) {
             clearTimeout(timeout);
             console.error(`[Proxy] Fetch failed: ${fetchError.name} - ${url}`);
-            // If timeout or network error, return fallback
             c.header('Content-Type', 'image/png');
             c.header('Cache-Control', 'public, max-age=60');
             return c.body(FALLBACK_IMAGE as any);
