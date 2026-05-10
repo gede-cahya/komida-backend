@@ -193,7 +193,7 @@ func (r *Repository) ByGenre(ctx context.Context, genre string, page int, limit 
 		       link, source, COALESCE(chapters, '[]'), COALESCE(genres, '[]'), synopsis, status, author,
 		       to_char(last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_updated
 		FROM manga
-		WHERE genres ILIKE $1
+		WHERE genres::text ILIKE $1
 		ORDER BY last_updated DESC
 		LIMIT $2 OFFSET $3`, "%"+genre+"%", limit, offset)
 	if err != nil {
