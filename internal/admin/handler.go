@@ -36,6 +36,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/comments", middleware.AdminOnly(h.comments))
 	// Active users
 	mux.HandleFunc("/api/admin/active-users", middleware.AdminOnly(h.activeUsers))
+	mux.HandleFunc("/api/admin/stats/summary", middleware.AdminOnly(h.statsSummary))
+	mux.HandleFunc("/api/admin/stats/visits", middleware.AdminOnly(h.statsVisits))
+	mux.HandleFunc("/api/admin/stats/popular", middleware.AdminOnly(h.statsPopular))
 	// Announcements
 	mux.HandleFunc("/api/admin/announcements", middleware.AdminOnly(h.announcements))
 	mux.HandleFunc("/api/admin/announcements/", middleware.AdminOnly(h.announcementDetail))
@@ -58,6 +61,126 @@ func intQuery(r *http.Request, key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func intervalForPeriod(period string) (string, string) {
+	switch period {
+	case "week":
+		return "7 days", "YYYY-MM-DD"
+	case "month":
+		return "30 days", "YYYY-MM-DD"
+	default:
+		return "1 day", "HH24:00"
+	}
+}
+
+func adminImageURL(raw string) string {
+	if strings.HasPrefix(raw, "http://") {
+		raw = "https://" + raw[7:]
+	}
+	raw = strings.Replace(raw, "https://v3.kiryuu.to/", "https://v5.kiryuu.to/", 1)
+	raw = strings.Replace(raw, "https://v4.kiryuu.to/", "https://v5.kiryuu.to/", 1)
+	return raw
+}
+
+func (h *Handler) statsSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	var totalManga, totalViews, totalVisits, todayVisits int64
+	if err := h.pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM manga`).Scan(&totalManga); err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := h.pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM manga_views`).Scan(&totalViews); err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := h.pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM site_visits`).Scan(&totalVisits); err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := h.pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM site_visits WHERE visited_at > CURRENT_DATE`).Scan(&todayVisits); err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]any{
+		"totalManga": totalManga, "totalViews": totalViews,
+		"totalVisits": totalVisits, "todayVisits": todayVisits,
+	})
+}
+
+func (h *Handler) statsVisits(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	interval, format := intervalForPeriod(r.URL.Query().Get("period"))
+	query := fmt.Sprintf(`
+		SELECT to_char(visited_at, '%s') as date, COUNT(id) as visits
+		FROM site_visits
+		WHERE visited_at > NOW() - INTERVAL '%s'
+		GROUP BY 1
+		ORDER BY 1 ASC`, format, interval)
+	rows, err := h.pool.Query(r.Context(), query)
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+	var visits []map[string]any
+	for rows.Next() {
+		var date string
+		var count int64
+		if err := rows.Scan(&date, &count); err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		visits = append(visits, map[string]any{"date": date, "visits": count})
+	}
+	api.WriteJSON(w, http.StatusOK, visits)
+}
+
+func (h *Handler) statsPopular(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	interval, _ := intervalForPeriod(r.URL.Query().Get("period"))
+	rows, err := h.pool.Query(r.Context(), `
+		SELECT mv.manga_slug, COUNT(*) as views
+		FROM manga_views mv
+		WHERE mv.viewed_at > NOW() - $1::INTERVAL
+		GROUP BY mv.manga_slug
+		ORDER BY views DESC
+		LIMIT 10`, interval)
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+	var results []map[string]any
+	for rows.Next() {
+		var slug string
+		var views int64
+		if err := rows.Scan(&slug, &views); err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		var title, image, source string
+		_ = h.pool.QueryRow(r.Context(), `
+			SELECT title, image, source FROM manga
+			WHERE lower(title) = lower(replace($1, '-', ' '))
+			   OR lower(link) LIKE lower('%' || $1 || '%')
+			ORDER BY last_updated DESC
+			LIMIT 1`, slug).Scan(&title, &image, &source)
+		results = append(results, map[string]any{
+			"slug": slug, "views": views, "title": title,
+			"image": adminImageURL(image), "source": source,
+		})
+	}
+	api.WriteJSON(w, http.StatusOK, results)
 }
 
 func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
