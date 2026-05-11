@@ -39,6 +39,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/stats/summary", middleware.AdminOnly(h.statsSummary))
 	mux.HandleFunc("/api/admin/stats/visits", middleware.AdminOnly(h.statsVisits))
 	mux.HandleFunc("/api/admin/stats/popular", middleware.AdminOnly(h.statsPopular))
+	mux.HandleFunc("/api/admin/badges", middleware.AdminOnly(h.badges))
+	mux.HandleFunc("/api/admin/badges/", middleware.AdminOnly(h.badgeDetail))
+	mux.HandleFunc("/api/admin/decorations", middleware.AdminOnly(h.decorations))
+	mux.HandleFunc("/api/admin/decorations/", middleware.AdminOnly(h.decorationDetail))
 	// Announcements
 	mux.HandleFunc("/api/admin/announcements", middleware.AdminOnly(h.announcements))
 	mux.HandleFunc("/api/admin/announcements/", middleware.AdminOnly(h.announcementDetail))
@@ -81,6 +85,14 @@ func adminImageURL(raw string) string {
 	raw = strings.Replace(raw, "https://v3.kiryuu.to/", "https://v5.kiryuu.to/", 1)
 	raw = strings.Replace(raw, "https://v4.kiryuu.to/", "https://v5.kiryuu.to/", 1)
 	return raw
+}
+
+func formValueDefault(r *http.Request, key string, fallback string) string {
+	val := r.FormValue(key)
+	if val == "" {
+		return fallback
+	}
+	return val
 }
 
 func (h *Handler) statsSummary(w http.ResponseWriter, r *http.Request) {
@@ -181,6 +193,153 @@ func (h *Handler) statsPopular(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	api.WriteJSON(w, http.StatusOK, results)
+}
+
+func (h *Handler) badges(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := h.pool.Query(r.Context(), `SELECT id, name, description, icon_url, type, created_at FROM badges ORDER BY created_at DESC`)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		var badges []map[string]any
+		for rows.Next() {
+			var id int
+			var name, iconURL, typ string
+			var description *string
+			var createdAt interface{}
+			if err := rows.Scan(&id, &name, &description, &iconURL, &typ, &createdAt); err != nil {
+				continue
+			}
+			badges = append(badges, map[string]any{"id": id, "name": name, "description": description, "icon_url": iconURL, "type": typ, "created_at": createdAt})
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]any{"badges": badges})
+	case http.MethodPost:
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid form"})
+			return
+		}
+		name := strings.TrimSpace(r.FormValue("name"))
+		if name == "" {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Name is required"})
+			return
+		}
+		iconURL := r.FormValue("icon_url")
+		if iconURL == "" {
+			iconURL = "/uploads/badge-placeholder.svg"
+		}
+		var id int
+		err := h.pool.QueryRow(r.Context(), `INSERT INTO badges (name, description, icon_url, type) VALUES ($1, $2, $3, $4) RETURNING id`,
+			name, r.FormValue("description"), iconURL, formValueDefault(r, "type", "regular")).Scan(&id)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]any{"badge": map[string]any{"id": id}})
+	default:
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+	}
+}
+
+func (h *Handler) badgeDetail(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/admin/badges/"))
+	if err != nil {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
+		return
+	}
+	switch r.Method {
+	case http.MethodDelete:
+		_, err = h.pool.Exec(r.Context(), `DELETE FROM badges WHERE id = $1`, id)
+	case http.MethodPut:
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid form"})
+			return
+		}
+		_, err = h.pool.Exec(r.Context(), `UPDATE badges SET name = COALESCE(NULLIF($1, ''), name), description = $2, type = COALESCE(NULLIF($3, ''), type) WHERE id = $4`,
+			r.FormValue("name"), r.FormValue("description"), r.FormValue("type"), id)
+	default:
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *Handler) decorations(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := h.pool.Query(r.Context(), `SELECT id, name, description, image_url, type, created_at FROM decorations ORDER BY created_at DESC`)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+		var decorations []map[string]any
+		for rows.Next() {
+			var id int
+			var name, imageURL, typ string
+			var description *string
+			var createdAt interface{}
+			if err := rows.Scan(&id, &name, &description, &imageURL, &typ, &createdAt); err != nil {
+				continue
+			}
+			decorations = append(decorations, map[string]any{"id": id, "name": name, "description": description, "image_url": imageURL, "type": typ, "created_at": createdAt})
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]any{"decorations": decorations})
+	case http.MethodPost:
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid form"})
+			return
+		}
+		name := strings.TrimSpace(r.FormValue("name"))
+		imageURL := r.FormValue("image_url")
+		if name == "" || imageURL == "" {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Name and image_url are required"})
+			return
+		}
+		var id int
+		err := h.pool.QueryRow(r.Context(), `INSERT INTO decorations (name, description, image_url, type) VALUES ($1, $2, $3, $4) RETURNING id`,
+			name, r.FormValue("description"), imageURL, formValueDefault(r, "type", "regular")).Scan(&id)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]any{"decoration": map[string]any{"id": id}})
+	default:
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+	}
+}
+
+func (h *Handler) decorationDetail(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/admin/decorations/"))
+	if err != nil {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
+		return
+	}
+	switch r.Method {
+	case http.MethodDelete:
+		_, err = h.pool.Exec(r.Context(), `DELETE FROM decorations WHERE id = $1`, id)
+	case http.MethodPut:
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid form"})
+			return
+		}
+		_, err = h.pool.Exec(r.Context(), `UPDATE decorations SET name = COALESCE(NULLIF($1, ''), name), description = $2, image_url = COALESCE(NULLIF($3, ''), image_url), type = COALESCE(NULLIF($4, ''), type) WHERE id = $5`,
+			r.FormValue("name"), r.FormValue("description"), r.FormValue("image_url"), r.FormValue("type"), id)
+	default:
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
