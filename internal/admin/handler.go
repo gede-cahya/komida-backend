@@ -172,7 +172,7 @@ func (h *Handler) statsPopular(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	var results []map[string]any
+	results := make([]map[string]any, 0)
 	for rows.Next() {
 		var slug string
 		var views int64
@@ -204,7 +204,7 @@ func (h *Handler) badges(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer rows.Close()
-		var badges []map[string]any
+		badges := make([]map[string]any, 0)
 		for rows.Next() {
 			var id int
 			var name, iconURL, typ string
@@ -279,7 +279,7 @@ func (h *Handler) decorations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer rows.Close()
-		var decorations []map[string]any
+		decorations := make([]map[string]any, 0)
 		for rows.Next() {
 			var id int
 			var name, imageURL, typ string
@@ -370,7 +370,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var users []map[string]any
+	users := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int
 		var username, role string
@@ -424,7 +424,7 @@ func (h *Handler) manga(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var manga []map[string]any
+	manga := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int
 		var title, image, source, chapter string
@@ -537,7 +537,7 @@ func (h *Handler) comments(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var comments []map[string]any
+	comments := make([]map[string]any, 0)
 	for rows.Next() {
 		var id, userID int
 		var slug, content string
@@ -576,7 +576,7 @@ func (h *Handler) activeUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var users []map[string]any
+	users := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int
 		var username string
@@ -613,7 +613,7 @@ func (h *Handler) announcements(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	var announcements []map[string]any
+	announcements := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int
 		var adminID *int
@@ -777,7 +777,7 @@ func (h *Handler) bugReports(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var reports []map[string]any
+	reports := make([]map[string]any, 0)
 	for rows.Next() {
 		var id int
 		var title, description string
