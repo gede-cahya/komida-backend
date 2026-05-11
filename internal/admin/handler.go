@@ -435,7 +435,20 @@ func (h *Handler) activeUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) announcements(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.pool.Query(r.Context(), `SELECT id, content, type, image_url, is_active, created_at, created_by FROM announcements ORDER BY created_at DESC`)
+	if r.Method == http.MethodPost {
+		h.createAnnouncement(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	rows, err := h.pool.Query(r.Context(), `
+		SELECT a.id, a.content, a.type, a.image_url, a.is_active, a.created_at, a.admin_id,
+		       u.username, u.display_name, u.avatar_url
+		FROM announcements a
+		LEFT JOIN users u ON a.admin_id = u.id
+		ORDER BY a.created_at DESC`)
 	if err != nil {
 		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -443,17 +456,20 @@ func (h *Handler) announcements(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	var announcements []map[string]any
 	for rows.Next() {
-		var id, createdBy int
+		var id int
+		var adminID *int
 		var content, typ string
 		var imageURL *string
+		var username, displayName, avatarURL *string
 		var isActive bool
 		var createdAt interface{}
-		if err := rows.Scan(&id, &content, &typ, &imageURL, &isActive, &createdAt, &createdBy); err != nil {
+		if err := rows.Scan(&id, &content, &typ, &imageURL, &isActive, &createdAt, &adminID, &username, &displayName, &avatarURL); err != nil {
 			continue
 		}
 		announcements = append(announcements, map[string]any{
 			"id": id, "content": content, "type": typ, "image_url": imageURL,
-			"is_active": isActive, "created_at": createdAt, "created_by": createdBy,
+			"is_active": isActive, "created_at": createdAt, "admin_id": adminID,
+			"admin": map[string]any{"username": username, "display_name": displayName, "avatar_url": avatarURL},
 		})
 	}
 	api.WriteJSON(w, http.StatusOK, map[string]any{"announcements": announcements})
@@ -466,20 +482,100 @@ func (h *Handler) announcementDetail(w http.ResponseWriter, r *http.Request) {
 		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid ID"})
 		return
 	}
+	switch r.Method {
+	case http.MethodPut:
+		h.updateAnnouncement(w, r, id)
+		return
+	case http.MethodDelete:
+		if _, err := h.pool.Exec(r.Context(), `DELETE FROM announcements WHERE id = $1`, id); err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+		return
+	case http.MethodGet:
+	default:
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
 	var content, typ string
 	var imageURL *string
 	var isActive bool
 	var createdAt interface{}
-	var createdBy int
-	err = h.pool.QueryRow(r.Context(), `SELECT content, type, image_url, is_active, created_at, created_by FROM announcements WHERE id = $1`, id).Scan(&content, &typ, &imageURL, &isActive, &createdAt, &createdBy)
+	var adminID *int
+	err = h.pool.QueryRow(r.Context(), `SELECT content, type, image_url, is_active, created_at, admin_id FROM announcements WHERE id = $1`, id).Scan(&content, &typ, &imageURL, &isActive, &createdAt, &adminID)
 	if err != nil {
 		api.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "Announcement not found"})
 		return
 	}
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"id": id, "content": content, "type": typ, "image_url": imageURL,
-		"is_active": isActive, "created_at": createdAt, "created_by": createdBy,
+		"is_active": isActive, "created_at": createdAt, "admin_id": adminID,
 	})
+}
+
+type announcementInput struct {
+	Content  string  `json:"content"`
+	Type     string  `json:"type"`
+	ImageURL *string `json:"image_url"`
+	IsActive *bool   `json:"is_active"`
+}
+
+func (h *Handler) createAnnouncement(w http.ResponseWriter, r *http.Request) {
+	var input announcementInput
+	if err := api.JSONDecode(r, &input); err != nil {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+	if strings.TrimSpace(input.Content) == "" {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Content is required"})
+		return
+	}
+	if input.Type == "" {
+		input.Type = "info"
+	}
+	u := middleware.GetUser(r)
+	var id int
+	err := h.pool.QueryRow(r.Context(), `
+		INSERT INTO announcements (content, type, image_url, is_active, admin_id)
+		VALUES ($1, $2, $3, true, $4)
+		RETURNING id`, input.Content, input.Type, input.ImageURL, u.ID).Scan(&id)
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]any{"announcement": map[string]any{"id": id}})
+}
+
+func (h *Handler) updateAnnouncement(w http.ResponseWriter, r *http.Request, id int) {
+	var input announcementInput
+	if err := api.JSONDecode(r, &input); err != nil {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+	if input.IsActive != nil && input.Content == "" && input.Type == "" && input.ImageURL == nil {
+		_, err := h.pool.Exec(r.Context(), `UPDATE announcements SET is_active = $1 WHERE id = $2`, *input.IsActive, id)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+		return
+	}
+	if input.Type == "" {
+		input.Type = "info"
+	}
+	_, err := h.pool.Exec(r.Context(), `
+		UPDATE announcements
+		SET content = COALESCE(NULLIF($1, ''), content),
+		    type = COALESCE(NULLIF($2, ''), type),
+		    image_url = COALESCE($3, image_url)
+		WHERE id = $4`, input.Content, input.Type, input.ImageURL, id)
+	if err != nil {
+		api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *Handler) activeAnnouncement(w http.ResponseWriter, r *http.Request) {
