@@ -16,6 +16,8 @@ func refererFor(rawURL string, source string) string {
 	lowerURL := strings.ToLower(rawURL)
 	lowerSource := strings.ToLower(source)
 	switch {
+	case strings.Contains(lowerURL, "kiryuu.to"):
+		return referer
 	case strings.Contains(lowerURL, "softkomik") || strings.Contains(lowerURL, "softdevices") || lowerSource == "softkomik":
 		return "https://softkomik.com/"
 	case strings.Contains(lowerURL, "yuucdn") || lowerSource == "kiryuu":
