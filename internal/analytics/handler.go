@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gede-cahya/komida-backend/internal/api"
 )
@@ -24,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/analytics/top-manga", h.topManga)
 	mux.HandleFunc("/api/analytics/site-visits", h.siteVisits)
 	mux.HandleFunc("/api/analytics/summary", h.summary)
+	mux.HandleFunc("/api/manga/view/", h.mangaView)
 }
 
 func (h *Handler) trackView(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +34,22 @@ func (h *Handler) trackView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slug := r.URL.Query().Get("slug")
+	if slug == "" {
+		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing slug"})
+		return
+	}
+	if err := h.repo.TrackMangaView(r.Context(), slug); err != nil {
+		h.logger.Warn("track view failed", "error", err)
+	}
+	api.WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *Handler) mangaView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+	slug := strings.TrimPrefix(r.URL.Path, "/api/manga/view/")
 	if slug == "" {
 		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing slug"})
 		return
