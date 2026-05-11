@@ -261,8 +261,10 @@ type detailRecord struct {
 
 func secureImageURL(url string) string {
 	if strings.HasPrefix(url, "http://") {
-		return "https://" + url[7:]
+		url = "https://" + url[7:]
 	}
+	url = strings.Replace(url, "https://v3.kiryuu.to/", "https://v5.kiryuu.to/", 1)
+	url = strings.Replace(url, "https://v4.kiryuu.to/", "https://v5.kiryuu.to/", 1)
 	return url
 }
 

@@ -27,7 +27,7 @@ type Kiryuu struct {
 
 func NewKiryuu() *Kiryuu {
 	return &Kiryuu{
-		baseURL:       "https://v3.kiryuu.to/",
+		baseURL:       "https://v5.kiryuu.to/",
 		client:        defaultHTTPClient,
 		genreMapCache: make(map[string]int),
 	}
@@ -44,6 +44,14 @@ func (k *Kiryuu) reroute(link string) string {
 	parsed.Scheme = base.Scheme
 	parsed.Host = base.Host
 	return parsed.String()
+}
+
+func (k *Kiryuu) normalizeURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.HasPrefix(raw, "data:image") {
+		return raw
+	}
+	return k.reroute(raw)
 }
 
 func (k *Kiryuu) fetch(ctx context.Context, link string) (*goquery.Document, error) {
@@ -140,7 +148,7 @@ func (k *Kiryuu) ScrapePopular(ctx context.Context) ([]scraper.ScrapedManga, err
 		if title != "" && link != "" {
 			results = append(results, scraper.ScrapedManga{
 				Title:           title,
-				Image:           image,
+				Image:           k.normalizeURL(image),
 				Source:          kiryuuName,
 				Chapter:         chapter,
 				PreviousChapter: strPtr(prevChapter),
@@ -179,7 +187,7 @@ func (k *Kiryuu) Search(ctx context.Context, query string) ([]scraper.ScrapedMan
 		}
 		results = append(results, scraper.ScrapedManga{
 			Title:   title,
-			Image:   image,
+			Image:   k.normalizeURL(image),
 			Source:  kiryuuName,
 			Chapter: "Read Now",
 			Link:    link,
@@ -264,7 +272,7 @@ func (k *Kiryuu) ScrapeDetail(ctx context.Context, link string) (*scraper.MangaD
 
 	return &scraper.MangaDetail{
 		Title:    title,
-		Image:    image,
+		Image:    k.normalizeURL(image),
 		Synopsis: synopsis,
 		Genres:   genres,
 		Author:   author,
@@ -383,7 +391,7 @@ func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.Chapt
 						doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 							src, _ := s.Attr("src")
 							if src != "" && !strings.HasPrefix(src, "data:image") {
-								images = append(images, strings.TrimSpace(src))
+								images = append(images, k.normalizeURL(src))
 							}
 						})
 					}
@@ -415,7 +423,7 @@ func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.Chapt
 				src, _ = s.Attr("src")
 			}
 			if src != "" && !strings.HasPrefix(src, "data:image") {
-				images = append(images, strings.TrimSpace(src))
+				images = append(images, k.normalizeURL(src))
 			}
 		})
 
@@ -426,7 +434,7 @@ func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.Chapt
 					src, _ = s.Attr("data-src")
 				}
 				if src != "" && !strings.HasPrefix(src, "data:image") {
-					images = append(images, strings.TrimSpace(src))
+					images = append(images, k.normalizeURL(src))
 				}
 			})
 		}
@@ -450,7 +458,7 @@ func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.Chapt
 					for _, src := range data.Sources {
 						for _, img := range src.Images {
 							if img != "" && !strings.HasPrefix(img, "data:image") {
-								images = append(images, strings.TrimSpace(img))
+								images = append(images, k.normalizeURL(img))
 							}
 						}
 					}
@@ -560,7 +568,7 @@ func (k *Kiryuu) ScrapeByGenre(ctx context.Context, genre string, page int) ([]s
 		}
 		results = append(results, scraper.ScrapedManga{
 			Title:   title,
-			Image:   image,
+			Image:   k.normalizeURL(image),
 			Source:  kiryuuName,
 			Chapter: "Read Now",
 			Link:    link,
