@@ -49,15 +49,32 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) updateProfile(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
-		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
-		return
-	}
 	u := middleware.GetUser(r)
 	if u == nil {
 		api.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
 		return
 	}
+
+	// GET /api/user/profile — frontend expects { user: profile }
+	if r.Method == http.MethodGet {
+		profile, err := h.repo.GetByID(r.Context(), u.ID)
+		if err != nil {
+			api.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if profile == nil {
+			api.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "User not found"})
+			return
+		}
+		api.WriteJSON(w, http.StatusOK, map[string]any{"user": profile})
+		return
+	}
+
+	if r.Method != http.MethodPut {
+		api.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
+		return
+	}
+
 	var input UpdateProfileInput
 	if err := api.JSONDecode(r, &input); err != nil {
 		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})

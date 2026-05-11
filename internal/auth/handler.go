@@ -62,9 +62,12 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"token":    token,
-		"username": u.Username,
-		"role":     u.Role,
+		"token": token,
+		"user": map[string]any{
+			"id":       u.ID,
+			"username": u.Username,
+			"role":     u.Role,
+		},
 	})
 }
 
@@ -102,9 +105,12 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
-		"token":    token,
-		"username": u.Username,
-		"role":     u.Role,
+		"token": token,
+		"user": map[string]any{
+			"id":       u.ID,
+			"username": u.Username,
+			"role":     u.Role,
+		},
 	})
 }
 
