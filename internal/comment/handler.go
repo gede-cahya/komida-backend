@@ -20,12 +20,15 @@ func NewHandler(repo *Repository, logger *slog.Logger) *Handler {
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("/api/comments", h.route)
 	mux.HandleFunc("/api/comments/", h.route)
 }
 
 func (h *Handler) route(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch {
+	case r.Method == http.MethodGet && path == "/api/comments":
+		h.list(w, r)
 	case r.Method == http.MethodGet && strings.HasPrefix(path, "/api/comments/"):
 		h.list(w, r)
 	case r.Method == http.MethodPost && path == "/api/comments":
@@ -41,6 +44,9 @@ func (h *Handler) route(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimPrefix(r.URL.Path, "/api/comments/")
+	if r.URL.Path == "/api/comments" {
+		slug = r.URL.Query().Get("slug")
+	}
 	if slug == "" {
 		api.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing slug"})
 		return
