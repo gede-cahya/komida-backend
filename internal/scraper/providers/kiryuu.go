@@ -41,8 +41,23 @@ func (k *Kiryuu) reroute(link string) string {
 		return link
 	}
 	base, _ := url.Parse(k.baseURL)
-	parsed.Scheme = base.Scheme
-	parsed.Host = base.Host
+	// Only reroute relative URLs or URLs on a kiryuu domain
+	if parsed.Host == "" {
+		// Relative URL
+		parsed.Scheme = base.Scheme
+		parsed.Host = base.Host
+		return parsed.String()
+	}
+	lowerHost := strings.ToLower(parsed.Host)
+	if strings.Contains(lowerHost, "kiryuu") {
+		parsed.Scheme = base.Scheme
+		parsed.Host = base.Host
+		return parsed.String()
+	}
+	// External host (e.g. yuucdn.com, blogger.googleusercontent.com) - keep as-is
+	if parsed.Scheme == "" {
+		parsed.Scheme = "https"
+	}
 	return parsed.String()
 }
 
