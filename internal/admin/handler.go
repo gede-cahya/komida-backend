@@ -399,31 +399,34 @@ func (h *Handler) manga(w http.ResponseWriter, r *http.Request) {
 
 	var query string
 	var args []interface{}
-	// Use subquery to deduplicate by title, keeping the most recently updated entry
-	baseQuery := func(where string) string {
-		q := `WITH ranked AS (
-			SELECT id, title, image, source, chapter, is_trending, last_updated,
-				ROW_NUMBER() OVER (PARTITION BY title ORDER BY last_updated DESC, id DESC) as rn
-			FROM manga`
-		if where != "" {
-			q += ` WHERE ` + where
-		}
-		q += `)
-			SELECT id, title, image, source, chapter, is_trending, last_updated
-			FROM ranked WHERE rn = 1`
-		return q
-	}
+	// Deduplicate by title using subquery - keep the record with highest id (most recent)
 	if search != "" && source != "" {
-		query = baseQuery("title ILIKE $1 AND source = $2") + ` ORDER BY last_updated DESC LIMIT $3 OFFSET $4`
+		query = `SELECT m.id, m.title, m.image, m.source, m.chapter, m.is_trending, m.last_updated
+			FROM manga m
+			INNER JOIN (SELECT title, MAX(id) as max_id FROM manga WHERE title ILIKE $1 AND source = $2 GROUP BY title) t
+			ON m.title = t.title AND m.id = t.max_id
+			ORDER BY m.last_updated DESC NULLS LAST LIMIT $3 OFFSET $4`
 		args = []interface{}{"%" + search + "%", source, limit, offset}
 	} else if search != "" {
-		query = baseQuery("title ILIKE $1") + ` ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
+		query = `SELECT m.id, m.title, m.image, m.source, m.chapter, m.is_trending, m.last_updated
+			FROM manga m
+			INNER JOIN (SELECT title, MAX(id) as max_id FROM manga WHERE title ILIKE $1 GROUP BY title) t
+			ON m.title = t.title AND m.id = t.max_id
+			ORDER BY m.last_updated DESC NULLS LAST LIMIT $2 OFFSET $3`
 		args = []interface{}{"%" + search + "%", limit, offset}
 	} else if source != "" {
-		query = baseQuery("source = $1") + ` ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
+		query = `SELECT m.id, m.title, m.image, m.source, m.chapter, m.is_trending, m.last_updated
+			FROM manga m
+			INNER JOIN (SELECT title, MAX(id) as max_id FROM manga WHERE source = $1 GROUP BY title) t
+			ON m.title = t.title AND m.id = t.max_id
+			ORDER BY m.last_updated DESC NULLS LAST LIMIT $2 OFFSET $3`
 		args = []interface{}{source, limit, offset}
 	} else {
-		query = baseQuery("") + ` ORDER BY last_updated DESC LIMIT $1 OFFSET $2`
+		query = `SELECT m.id, m.title, m.image, m.source, m.chapter, m.is_trending, m.last_updated
+			FROM manga m
+			INNER JOIN (SELECT title, MAX(id) as max_id FROM manga GROUP BY title) t
+			ON m.title = t.title AND m.id = t.max_id
+			ORDER BY m.last_updated DESC NULLS LAST LIMIT $1 OFFSET $2`
 		args = []interface{}{limit, offset}
 	}
 
