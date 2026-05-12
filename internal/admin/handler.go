@@ -399,21 +399,31 @@ func (h *Handler) manga(w http.ResponseWriter, r *http.Request) {
 
 	var query string
 	var args []interface{}
+	// Use subquery to deduplicate by title, keeping the most recently updated entry
+	baseQuery := func(where string) string {
+		q := `WITH ranked AS (
+			SELECT id, title, image, source, chapter, is_trending, last_updated,
+				ROW_NUMBER() OVER (PARTITION BY title ORDER BY last_updated DESC, id DESC) as rn
+			FROM manga`
+		if where != "" {
+			q += ` WHERE ` + where
+		}
+		q += `)
+			SELECT id, title, image, source, chapter, is_trending, last_updated
+			FROM ranked WHERE rn = 1`
+		return q
+	}
 	if search != "" && source != "" {
-		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE title ILIKE $1 AND source = $2 ORDER BY id DESC LIMIT $3 OFFSET $4`
+		query = baseQuery("title ILIKE $1 AND source = $2") + ` ORDER BY last_updated DESC LIMIT $3 OFFSET $4`
 		args = []interface{}{"%" + search + "%", source, limit, offset}
 	} else if search != "" {
-		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE title ILIKE $1 ORDER BY id DESC LIMIT $2 OFFSET $3`
+		query = baseQuery("title ILIKE $1") + ` ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
 		args = []interface{}{"%" + search + "%", limit, offset}
 	} else if source != "" {
-		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE source = $1 ORDER BY id DESC LIMIT $2 OFFSET $3`
+		query = baseQuery("source = $1") + ` ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
 		args = []interface{}{source, limit, offset}
 	} else {
-		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
-			ORDER BY id DESC LIMIT $1 OFFSET $2`
+		query = baseQuery("") + ` ORDER BY last_updated DESC LIMIT $1 OFFSET $2`
 		args = []interface{}{limit, offset}
 	}
 
@@ -440,7 +450,7 @@ func (h *Handler) manga(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var total int64
-	_ = h.pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM manga`).Scan(&total)
+	_ = h.pool.QueryRow(r.Context(), `SELECT COUNT(DISTINCT title) FROM manga`).Scan(&total)
 
 	api.WriteJSON(w, http.StatusOK, map[string]any{
 		"manga": manga, "total": total, "page": page, "limit": limit,
