@@ -96,6 +96,7 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request) {
 
 	filePath := strings.TrimPrefix(r.URL.Path, "/api/uploads/")
 	if filePath == "" || strings.Contains(filePath, "..") {
+		w.Header().Set("Cache-Control", "no-store")
 		api.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "File not found"})
 		return
 	}
@@ -105,12 +106,14 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request) {
 	baseDir, _ := filepath.Abs(uploadDir)
 	reqDir, _ := filepath.Abs(filepath.Dir(fullPath))
 	if !strings.HasPrefix(reqDir, baseDir) {
+		w.Header().Set("Cache-Control", "no-store")
 		api.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "File not found"})
 		return
 	}
 
 	info, err := os.Stat(fullPath)
 	if err != nil || info.IsDir() {
+		w.Header().Set("Cache-Control", "no-store")
 		api.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "File not found"})
 		return
 	}
@@ -135,6 +138,6 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Cache-Control", "public, max-age=60")
 	http.ServeFile(w, r, fullPath)
 }
