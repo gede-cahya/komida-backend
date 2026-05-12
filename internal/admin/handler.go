@@ -400,20 +400,20 @@ func (h *Handler) manga(w http.ResponseWriter, r *http.Request) {
 	var query string
 	var args []interface{}
 	if search != "" && source != "" {
-		query = `SELECT id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE title ILIKE $1 AND source = $2 ORDER BY last_updated DESC LIMIT $3 OFFSET $4`
+		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
+			WHERE title ILIKE $1 AND source = $2 ORDER BY id DESC LIMIT $3 OFFSET $4`
 		args = []interface{}{"%" + search + "%", source, limit, offset}
 	} else if search != "" {
-		query = `SELECT id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE title ILIKE $1 ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
+		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
+			WHERE title ILIKE $1 ORDER BY id DESC LIMIT $2 OFFSET $3`
 		args = []interface{}{"%" + search + "%", limit, offset}
 	} else if source != "" {
-		query = `SELECT id, title, image, source, chapter, is_trending, last_updated FROM manga
-			WHERE source = $1 ORDER BY last_updated DESC LIMIT $2 OFFSET $3`
+		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
+			WHERE source = $1 ORDER BY id DESC LIMIT $2 OFFSET $3`
 		args = []interface{}{source, limit, offset}
 	} else {
-		query = `SELECT id, title, image, source, chapter, is_trending, last_updated FROM manga
-			ORDER BY last_updated DESC LIMIT $1 OFFSET $2`
+		query = `SELECT DISTINCT ON (id) id, title, image, source, chapter, is_trending, last_updated FROM manga
+			ORDER BY id DESC LIMIT $1 OFFSET $2`
 		args = []interface{}{limit, offset}
 	}
 
