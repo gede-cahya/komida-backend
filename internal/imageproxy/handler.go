@@ -162,6 +162,7 @@ func writeImage(w http.ResponseWriter, contentType string, cacheStatus string, c
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", cacheControl)
 	w.Header().Set("X-Cache", cacheStatus)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(body)
 }
