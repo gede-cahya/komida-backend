@@ -4,7 +4,7 @@ import { MangaSource, type ScrapedManga, type ScraperProvider, type MangaDetail,
 
 export class KiryuuScraper implements ScraperProvider {
     name = MangaSource.KIRYUU;
-    private readonly baseUrl = 'https://v3.kiryuu.to/';
+    private readonly baseUrl = 'https://kiryuu.online/';
 
     // Reroute old database links to the current active domain
     private rerouteUrl(link: string): string {
@@ -22,48 +22,35 @@ export class KiryuuScraper implements ScraperProvider {
     async scrapePopular(): Promise<ScrapedManga[]> {
         try {
             console.log(`Scraping ${this.name}...`);
-            const response = await fetch(this.baseUrl, {
+            const response = await fetch(`${this.baseUrl}api/home`, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': this.baseUrl
                 }
             });
             if (!response.ok) {
-                throw new Error(`Failed to fetch ${this.baseUrl}: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch ${this.baseUrl}api/home: ${response.status} ${response.statusText}`);
             }
-            const html = await response.text();
-            const $ = cheerio.load(html);
-
+            const payload = await response.json() as any;
+            const items = Array.isArray(payload?.data?.recents) ? payload.data.recents : [];
 
             const mangaList: ScrapedManga[] = [];
 
-            $('div#latest-list.grid > div').each((_, element) => {
-                const titleElement = $(element).find('h1');
-                const linkElement = $(element).find('a').first();
-                const imgElement = $(element).find('img.wp-post-image');
-                const chapters = $(element).find('a.link-self');
-
-                const title = titleElement.text().trim();
-                const link = linkElement.attr('href') || '';
-                let image = imgElement.attr('data-src') || imgElement.attr('data-lazy-src') || imgElement.attr('src') || '';
-                if (image.startsWith('data:image')) {
-                    // Fallback if data-src missing but another attr has it
-                    image = imgElement.attr('srcset')?.split(' ')[0] || image;
-                }
-
-                const chapter = chapters.first().find('p').text().trim() || chapters.first().text().trim();
-                const previous_chapter = chapters.eq(1).find('p').text().trim() || chapters.eq(1).text().trim();
-
-                if (title && link) {
-                    mangaList.push({
-                        title,
-                        image,
-                        source: this.name,
-                        chapter,
-                        previous_chapter,
-                        link
-                    });
-                }
-            });
+            for (const item of items) {
+                const title = this.cleanDuplicatedTitle(item.title || '');
+                const slug = item.slug || '';
+                if (!title || !slug) continue;
+                const link = new URL(`manga/${slug}`, this.baseUrl).toString();
+                mangaList.push({
+                    title,
+                    image: item.coverImage || '',
+                    source: this.name,
+                    chapter: item.last_chapter || item.chapter || 'Read Now',
+                    previous_chapter: '',
+                    link,
+                    rating: Number(item.rating || 0)
+                });
+            }
 
             console.log(`Found ${mangaList.length} manga from ${this.name}`);
             return mangaList;
@@ -75,10 +62,8 @@ export class KiryuuScraper implements ScraperProvider {
 
     async search(query: string): Promise<ScrapedManga[]> {
         try {
-            console.log(`Searching ${this.name} via API for "${query}"...`);
-            const url = `${this.baseUrl}wp-json/wp/v2/manga?search=${encodeURIComponent(query)}&_embed`;
-
-            const response = await fetch(url, {
+            console.log(`Searching ${this.name} via ${this.baseUrl} for "${query}"...`);
+            const response = await fetch(`${this.baseUrl}api/home`, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Referer': this.baseUrl
@@ -87,25 +72,31 @@ export class KiryuuScraper implements ScraperProvider {
 
             if (!response.ok) throw new Error(`Failed to fetch search API: ${response.status}`);
 
-            const data = await response.json();
-            if (!Array.isArray(data)) return [];
-
-            const mangaList: ScrapedManga[] = data.map((item: any) => {
-                let image = '';
-                if (item._embedded && item._embedded['wp:featuredmedia'] && item._embedded['wp:featuredmedia'][0]) {
-                    image = item._embedded['wp:featuredmedia'][0].source_url;
-                }
-
-                return {
-                    title: this.decodeHtmlEntities(item.title?.rendered || 'Unknown Title'),
-                    image,
+            const payload = await response.json() as any;
+            const allItems = [
+                ...(payload?.data?.recents || []),
+                ...(payload?.data?.trending || []),
+                ...(payload?.data?.manhwas || []),
+                ...(payload?.data?.mangas || []),
+                ...(payload?.data?.manhuas || []),
+            ];
+            const q = query.toLowerCase();
+            const seen = new Set<string>();
+            const mangaList: ScrapedManga[] = allItems
+                .filter((item: any) => (item.title || '').toLowerCase().includes(q) || (item.slug || '').toLowerCase().includes(q))
+                .filter((item: any) => {
+                    if (!item.slug || seen.has(item.slug)) return false;
+                    seen.add(item.slug);
+                    return true;
+                })
+                .map((item: any) => ({
+                    title: this.cleanDuplicatedTitle(item.title || 'Unknown Title'),
+                    image: item.coverImage || '',
                     source: this.name,
-                    chapter: 'Read Now', // API doesn't provide chapter info easily
-                    rating: 0,
-                    link: item.link
-                };
-            });
-
+                    chapter: item.last_chapter || 'Read Now',
+                    rating: Number(item.rating || 0),
+                    link: new URL(`manga/${item.slug}`, this.baseUrl).toString()
+                }));
             console.log(`Found ${mangaList.length} results from ${this.name}`);
             return mangaList;
         } catch (error) {
@@ -117,142 +108,37 @@ export class KiryuuScraper implements ScraperProvider {
     async scrapeDetail(link: string): Promise<MangaDetail | null> {
         link = this.rerouteUrl(link);
         try {
-            console.log(`Scraping detail ${link}...`);
-            const response = await fetch(link, {
+            const slug = this.extractMangaSlug(link);
+            const apiUrl = `${this.baseUrl}api/manga/${encodeURIComponent(slug)}`;
+            console.log(`Scraping detail ${apiUrl}...`);
+            const response = await fetch(apiUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': this.baseUrl
                 }
             });
             if (!response.ok) {
                 console.error(`Failed to fetch detail: ${response.status}`);
-                 // Fallback: If 404/403, and this domain is newly changed, Next.js or Kiryuu might redirect. 
-                 // But fetch usually follows redirects!
                 return null;
             }
-            const html = await response.text();
-            // DEBUG: Dump HTML if title missing
-            if (html.length < 2000) console.log(`[Kiryuu] Short HTML (${html.length} chars)`);
-            const $ = cheerio.load(html);
 
-            const title = $('h1[itemprop="name"]').first().text().trim() || $('h1').first().text().trim();
-            const imgEl = $('img.wp-post-image').first().length ? $('img.wp-post-image').first() : $('img[itemprop="image"]').first().length ? $('img[itemprop="image"]').first() : $('.thumb img').first();
-            let image = imgEl.attr('data-src') || imgEl.attr('data-lazy-src') || imgEl.attr('src') || '';
-            if (image.startsWith('data:image')) {
-                image = imgEl.attr('srcset')?.split(' ')[0] || image;
-            }
-
-            // New Kiryuu uses itemprop="description" div; fallback to old selectors
-            const synopsis = $('div[itemprop="description"]').first().text().trim()
-                || $('.entry-content p').map((_, el) => $(el).text().trim()).get().join('\n\n')
-                || $('.entry-content').text().trim()
-                || $('.seriestucon').text().trim();
-
-            // New Kiryuu uses itemprop="genre" on <a> tags; fallback to old selectors
-            const genres = $('a[itemprop="genre"]').map((_, el) => $(el).text().trim()).get();
-            if (genres.length === 0) {
-                // Fallback: old WordPress selectors
-                const oldGenres = $('.gnr a, .mgen a, .seriestugenre a, a[href*="/genre/"]').map((_, el) => $(el).text().trim()).get();
-                genres.push(...oldGenres);
-            }
-
-            const status = $('.tsinfo .imptdt:contains("Status") i').text().trim() || 'Ongoing';
-            const author = $('.tsinfo .imptdt:contains("Author") i').text().trim() || 'Unknown';
-            const rating = parseFloat($('[itemprop="ratingValue"]').text().trim()) || parseFloat($('.num').text().trim()) || 0;
-
-            const chapters: MangaChapter[] = [];
-
-            // Check for AJAX chapter list (Kiryuu specific)
-            const ajaxChapterContainer = $('div[hx-trigger="getChapterList"]');
-            if (ajaxChapterContainer.length > 0) {
-                let ajaxUrl = ajaxChapterContainer.attr('hx-get');
-                if (ajaxUrl) {
-                    ajaxUrl = ajaxUrl.replace(/&#038;/g, '&');
-                    try {
-                        console.log(`[Kiryuu] Fetching chapter list from AJAX: ${ajaxUrl}`);
-                        const ajaxResponse = await fetch(ajaxUrl, {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                            }
-                        });
-                        const ajaxHtml = await ajaxResponse.text();
-                        const ajax$ = cheerio.load(ajaxHtml);
-
-                        ajax$('div[data-chapter-number]').each((_, element) => {
-                            const linkEl = ajax$(element).find('a').first();
-                            const chapTitle = linkEl.find('.flex.flex-row.gap-1 span').text().trim() || linkEl.text().trim();
-                            const chapLink = linkEl.attr('href');
-                            // Extract time/released date if available in AJAX
-                            const timeEl = linkEl.find('time');
-                            const released = timeEl.attr('datetime') || timeEl.text().trim();
-
-                            if (chapLink) {
-                                // Ensure absolute URL
-                                const fullLink = chapLink.startsWith('http') ? chapLink : new URL(chapLink, this.baseUrl).toString();
-                                chapters.push({
-                                    title: chapTitle,
-                                    link: fullLink,
-                                    released
-                                });
-                            }
-                        });
-                    } catch (error) {
-                        console.error(`[Kiryuu] Failed to fetch chapters from AJAX:`, error);
-                    }
-                }
-            }
-
-            // Standard parsing if no AJAX chapters found
-            if (chapters.length === 0) {
-                $('#chapterlist ul li, .eplister li, .rclist > li, #cl ul li').each((_, element) => {
-                    const linkEl = $(element).find('a');
-                    const chapTitle = linkEl.find('.chapternum').text().trim() || linkEl.text().trim();
-                    const chapLink = linkEl.attr('href') || '';
-                    const released = $(element).find('.chapterdate').text().trim();
-
-                    if (chapTitle && chapLink) {
-                        chapters.push({
-                            title: chapTitle,
-                            link: chapLink,
-                            released
-                        });
-                    }
-                });
-            }
-
-            // Fallback for "Chapters" tab if list is just links in a div or hidden
-            if (chapters.length === 0) {
-                $('a').each((_, element) => {
-                    const chapLink = $(element).attr('href');
-                    if (!chapLink || chapLink === '#') return;
-
-                    if (chapLink.includes('chapter') && chapLink.startsWith(this.baseUrl)) {
-                        let chapTitle = $(element).find('.chapternum').text().trim();
-                        if (!chapTitle) chapTitle = $(element).text().trim();
-
-                        if (!chapTitle || chapTitle.length > 50) {
-                            const match = chapLink.match(/chapter-([0-9.]+)/);
-                            if (match) chapTitle = `Chapter ${match[1]}`;
-                            else chapTitle = 'Chapter';
-                        }
-
-                        if (!chapters.some(c => c.link === chapLink)) {
-                            chapters.push({
-                                title: chapTitle,
-                                link: chapLink
-                            });
-                        }
-                    }
-                });
-            }
+            const payload = await response.json() as any;
+            if (!payload?.success || !payload?.data?.info) return null;
+            const info = payload.data.info;
+            const chapters: MangaChapter[] = Array.isArray(info.chapters) ? info.chapters.map((chapter: any) => ({
+                title: chapter.title || 'Chapter',
+                link: new URL(`read/${info.slug}/${chapter.slug}`, this.baseUrl).toString(),
+                released: chapter.released || chapter.updatedAt || undefined
+            })) : [];
 
             return {
-                title,
-                image,
-                synopsis,
-                genres,
-                author,
-                status,
-                rating,
+                title: this.cleanDuplicatedTitle(info.title || slug),
+                image: info.coverImage || '',
+                synopsis: info.synopsis || '',
+                genres: Array.isArray(info.genres) ? info.genres : [],
+                author: info.author || 'Unknown',
+                status: info.status || 'Ongoing',
+                rating: Number(info.rating || 0),
                 chapters
             };
 
@@ -271,98 +157,35 @@ export class KiryuuScraper implements ScraperProvider {
             let next: string | undefined;
             let prev: string | undefined;
 
-            // Strategy 1: Use WP REST API (Kiryuu's new approach)
-            // Extract chapter_id from URL pattern: chapter-XX.CHAPTER_ID/
-            const chapterIdMatch = link.match(/\.(\d+)\/?$/);
-            if (chapterIdMatch) {
-                const chapterId = chapterIdMatch[1];
-                const apiUrl = `${this.baseUrl}wp-json/wp/v2/chapter/${chapterId}`;
-                console.log(`[Kiryuu] Trying WP REST API: ${apiUrl}`);
+            const { mangaSlug, chapterSlug } = this.extractReadSlugs(link);
+            const apiUrl = `${this.baseUrl}api/read/${encodeURIComponent(mangaSlug)}/${encodeURIComponent(chapterSlug)}`;
+            console.log(`[Kiryuu] Fetching reader API: ${apiUrl}`);
 
-                try {
-                    const apiResponse = await fetch(apiUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                        }
-                    });
-
-                    if (apiResponse.ok) {
-                        const apiData = await apiResponse.json();
-                        if (apiData.content?.rendered) {
-                            const content$ = cheerio.load(apiData.content.rendered);
-                            content$('img').each((_, element) => {
-                                const src = content$(element).attr('src');
-                                if (src && !src.startsWith('data:image')) {
-                                    images.push(src.trim());
-                                }
-                            });
-                            console.log(`[Kiryuu] WP REST API returned ${images.length} images`);
-                        }
-                    }
-                } catch (apiErr) {
-                    console.error(`[Kiryuu] WP REST API failed:`, apiErr);
-                }
-            }
-
-            // Fetch the chapter page for nav links (prev/next) and fallback image extraction
-            const response = await fetch(link, {
+            const response = await fetch(apiUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': new URL(`read/${mangaSlug}/${chapterSlug}`, this.baseUrl).toString()
                 }
             });
             if (!response.ok) {
-                console.error(`Failed to fetch chapter page: ${response.status}`);
-                // If we already got images from API, return them without nav
-                if (images.length > 0) return { images, next, prev };
+                console.error(`Failed to fetch chapter API: ${response.status}`);
                 return null;
             }
-            const html = await response.text();
-            const $ = cheerio.load(html);
-
-            // Fallback image extraction from HTML if API didn't return images
-            if (images.length === 0) {
-                $('#readerarea img').each((_, element) => {
-                    const dataSrc = $(element).attr('data-src');
-                    const src = $(element).attr('src');
-                    const validSrc = dataSrc || src;
-                    if (validSrc && !validSrc.startsWith('data:image')) {
-                        images.push(validSrc.trim());
-                    }
-                });
+            const payload = await response.json() as any;
+            if (!payload?.success || !payload?.data?.chapter) return null;
+            const chapter = payload.data.chapter;
+            if (Array.isArray(chapter.images)) {
+                images.push(...chapter.images.filter((src: string) => src && !src.startsWith('data:image')));
             }
 
-            if (images.length === 0) {
-                $('section[data-image-data] img').each((_, element) => {
-                    const src = $(element).attr('src') || $(element).attr('data-src');
-                    if (src && !src.startsWith('data:image')) {
-                        images.push(src.trim());
-                    }
-                });
+            const chapters = payload.data.manga?.chapters || [];
+            const currentIndex = chapters.findIndex((ch: any) => ch.slug === chapterSlug);
+            if (currentIndex > 0) {
+                next = new URL(`read/${mangaSlug}/${chapters[currentIndex - 1].slug}`, this.baseUrl).toString();
             }
-
-            if (images.length === 0) {
-                const scriptContent = $('script:contains("ts_reader")').html();
-                if (scriptContent) {
-                    const match = scriptContent.match(/ts_reader\.run\((.*?)\);/);
-                    if (match && match[1]) {
-                        try {
-                            const data = JSON.parse(match[1]);
-                            if (data.sources && data.sources.length > 0 && data.sources[0].images) {
-                                images.push(...data.sources[0].images);
-                            }
-                        } catch (e) {
-                            console.error('Failed to parse ts_reader JSON', e);
-                        }
-                    }
-                }
+            if (currentIndex >= 0 && currentIndex < chapters.length - 1) {
+                prev = new URL(`read/${mangaSlug}/${chapters[currentIndex + 1].slug}`, this.baseUrl).toString();
             }
-
-            // Extract next/prev navigation
-            next = $('a[aria-label="Next"]').attr('href') || $('.nextprev a.next_ch').attr('href') || $('a[rel="next"]').attr('href');
-            prev = $('a[aria-label="Prev"]').attr('href') || $('.nextprev a.prev_ch').attr('href') || $('a[rel="prev"]').attr('href');
-
-            if (next === '#' || next === '' || next === 'javascript:void(0)') next = undefined;
-            if (prev === '#' || prev === '' || prev === 'javascript:void(0)') prev = undefined;
 
             return { images, next, prev };
         } catch (error) {
@@ -502,5 +325,39 @@ export class KiryuuScraper implements ScraperProvider {
             .replace(/&quot;/g, '"')
             .replace(/&#039;/g, "'")
             .replace(/&rsquo;/g, "'");
+    }
+
+    private cleanDuplicatedTitle(title: string): string {
+        const clean = this.decodeHtmlEntities(String(title || '').trim());
+        const half = clean.length / 2;
+        if (clean.length % 2 === 0 && clean.slice(0, half).toLowerCase() === clean.slice(half).toLowerCase()) {
+            return clean.slice(0, half).trim();
+        }
+        return clean;
+    }
+
+    private extractMangaSlug(link: string): string {
+        try {
+            const parsed = new URL(link, this.baseUrl);
+            const parts = parsed.pathname.split('/').filter(Boolean);
+            const mangaIndex = parts.indexOf('manga');
+            if (mangaIndex >= 0 && parts[mangaIndex + 1]) return parts[mangaIndex + 1];
+            return parts[0] || link;
+        } catch {
+            return link.split('/').filter(Boolean).pop() || link;
+        }
+    }
+
+    private extractReadSlugs(link: string): { mangaSlug: string; chapterSlug: string } {
+        const parsed = new URL(link, this.baseUrl);
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        const readIndex = parts.indexOf('read');
+        if (readIndex >= 0 && parts[readIndex + 1] && parts[readIndex + 2]) {
+            return { mangaSlug: parts[readIndex + 1], chapterSlug: parts[readIndex + 2] };
+        }
+        return {
+            mangaSlug: parts.length >= 2 ? parts[parts.length - 2] : '',
+            chapterSlug: parts[parts.length - 1] || ''
+        };
     }
 }

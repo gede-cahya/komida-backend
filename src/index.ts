@@ -18,6 +18,7 @@ import { serveStatic } from 'hono/bun';
 import { writeFile, mkdir, readFile, access, stat, readdir, unlink } from 'fs/promises';
 import { constants } from 'fs';
 import { createHash } from 'crypto';
+import { lookup } from 'dns/promises';
 import { join } from 'path';
 import { generateSiweNonce, parseSiweMessage } from 'viem/siwe';
 import { createPublicClient, http, verifyMessage } from 'viem';
@@ -70,7 +71,8 @@ app.get('/health', (c) => {
             rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
             heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
             heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
-        }
+        },
+        autoSourceRefresh: autoSourceRefreshStatus
     })
 })
 
@@ -84,6 +86,8 @@ import { badgeService } from './service/badgeService';
 import { questService } from './service/questService';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+
+import { autoSourceRefreshStatus, runAutoSourceRefresh, startAutoSourceRefresh } from './service/autoSourceRefresh';
 
 const analyticsService = new AnalyticsService();
 
@@ -1628,22 +1632,25 @@ app.get('/api/popular', async (c) => {
     let popular = await mangaService.getPopularManga(page, limit);
 
     if ((popular.length === 0 && page === 1) || refresh) {
-        await mangaService.updatePopularCache();
+        if (refresh) {
+            void runAutoSourceRefresh('manual');
+        } else {
+            await runAutoSourceRefresh('manual');
+        }
         popular = await mangaService.getPopularManga(page, limit);
     }
 
-    // Pass metadata? The current frontend expects array.
-    // If we add pagination, frontend might need 'hasMore' or 'total'.
-    // service.getPopularManga returns array.
-    // I'll return the array directly for now to keep contract similar, but clients need to manage logic.
-    // Or I can return { data: [], page: 1 }.
-    // Existing frontend expects array?
-    // Let's check existing usage. `page.tsx` (Home) likely expects array.
-    // `app/popular/page.tsx` likely expects array.
-    // I will return array for now. Frontend will just increment page and if empty array, stop.
-
     return c.json(popular)
 })
+
+app.get('/api/source-refresh/status', (c) => {
+    return c.json(autoSourceRefreshStatus);
+});
+
+app.post('/api/admin/source-refresh/run', async (c) => {
+    void runAutoSourceRefresh('manual');
+    return c.json({ success: true, message: 'Auto source refresh started in background', status: autoSourceRefreshStatus });
+});
 
 app.get('/api/genres', async (c) => {
     const genres = await mangaService.getGenres();
@@ -1856,7 +1863,18 @@ app.get('/api/manga/slug/:slug', async (c) => {
 // Semaphore to limit concurrent image proxy requests
 let activeProxyRequests = 0;
 const MAX_CONCURRENT_PROXY = 30; // Increased from 3 to 30 to handle grid loads
-
+const MAX_PROXY_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB per image
+const ALLOWED_IMAGE_HOSTS = new Set([
+    'komida.site', 'kacu.gmbr.pro', 'image.softkomik.com', 'image2.softkomik.com',
+    'image.softkomik.co', 'cover.softdevices.my.id', 'images.envira-cdn.com', 'ik.imagekit.io',
+    'media.tenor.com', 'c.tenor.com', 'v2.kiryuu.to', 'v3.kiryuu.to',
+    'v4.kiryuu.to', 'v5.kiryuu.to', 'kiryuu.to', 'yuucdn.com', 'yuucdn.net',
+    'blogger.googleusercontent.com', 'lh3.googleusercontent.com', 'i0.wp.com',
+    'i1.wp.com', 'i2.wp.com', 'i3.wp.com', 'softkomik.com', 'softkomik.co',
+    'manhwaindo.my', 'www.manhwaindo.my', 'keikomik.web.id', 'www.keikomik.web.id',
+    'kiryuu.online', 'www.kiryuu.online', 'thumbnail.komiku.org', 'img.komiku.org',
+    'kreisnow.web.id', 'www.kreisnow.web.id'
+]);
 sharp.cache(false);        // Disable Sharp's internal image cache
 sharp.concurrency(1);      // Limit Sharp to 1 processing thread
 
@@ -1867,6 +1885,42 @@ const FALLBACK_IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ
 const CACHE_DIR = './cache/images';
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const CACHE_MAX_SIZE_BYTES = 3 * 1024 * 1024 * 1024; // 3GB max
+
+function isPrivateIp(ip: string): boolean {
+    const normalized = ip.toLowerCase().replace(/^::ffff:/, '').replace(/^\[|\]$/g, '');
+    if (normalized === 'localhost' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1' || normalized === '::') return true;
+    if (normalized.includes(':')) return normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80');
+    const parts = normalized.split('.').map(Number);
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return false;
+    const [a, b] = parts;
+    return a === 10 || a === 127 || a === 0 || (a === 100 && b >= 64 && b <= 127) ||
+        (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19));
+}
+
+function isAllowedImageHost(hostname: string): boolean {
+    const host = hostname.toLowerCase().replace(/^www\./, '');
+    return ALLOWED_IMAGE_HOSTS.has(host) || ALLOWED_IMAGE_HOSTS.has(`www.${host}`) ||
+        host.endsWith('.yuucdn.com') || host.endsWith('.yuucdn.net') ||
+        host.endsWith('.imagekit.io') || host.endsWith('.envira-cdn.com') || host.endsWith('.wp.com') ||
+        host.endsWith('.komiku.org') || host.endsWith('.kreisnow.web.id');
+}
+
+async function validateProxyUrl(rawUrl: string): Promise<URL | null> {
+    let parsed: URL;
+    try { parsed = new URL(rawUrl); } catch { return null; }
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (parsed.username || parsed.password) return null;
+    if (isPrivateIp(parsed.hostname)) return null;
+    if (!isAllowedImageHost(parsed.hostname)) return null;
+    const records = await lookup(parsed.hostname, { all: true }).catch(() => []);
+    if (records.length === 0 || records.some((record) => isPrivateIp(record.address))) return null;
+    return parsed;
+}
+
+function isImageContentType(contentType: string): boolean {
+    return /^image\/(jpeg|jpg|png|webp|gif|avif|bmp|svg\+xml)(;|$)/i.test(contentType);
+}
 
 function getCachePaths(url: string) {
     const hash = createHash('sha256').update(url).digest('hex');
@@ -1949,8 +2003,17 @@ app.get('/api/image/proxy', async (c) => {
     const url = c.req.query('url');
     if (!url) return c.text('Missing url', 400);
 
+    const parsedUrl = await validateProxyUrl(url);
+    if (!parsedUrl) {
+        c.header('Content-Type', 'image/png');
+        c.header('Cache-Control', 'public, max-age=60');
+        c.header('X-Proxy-Reject', 'invalid-url');
+        return c.body(FALLBACK_IMAGE as any);
+    }
+    const safeUrl = parsedUrl.toString();
+
     // --- 1. Check disk cache first ---
-    const cached = await getCachedImage(url);
+    const cached = await getCachedImage(safeUrl);
     if (cached) {
         c.header('Content-Type', cached.contentType);
         c.header('Cache-Control', 'public, max-age=604800'); // 7 days browser cache
@@ -1969,7 +2032,6 @@ app.get('/api/image/proxy', async (c) => {
 
     let referer = 'https://kiryuu.id/';
     try {
-        const parsedUrl = new URL(url);
         referer = parsedUrl.origin + '/';
     } catch (e) {
         // Fallback if parsing fails
@@ -1988,7 +2050,7 @@ app.get('/api/image/proxy', async (c) => {
         const timeout = setTimeout(() => controller.abort(), 3000);
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(safeUrl, {
                 headers: {
                     'Referer': referer,
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -2004,15 +2066,27 @@ app.get('/api/image/proxy', async (c) => {
                 return c.body(FALLBACK_IMAGE as any);
             }
 
-            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            const contentType = response.headers.get('content-type') || '';
+            if (!isImageContentType(contentType)) {
+                console.error(`[Proxy] Rejected non-image content-type: ${contentType || 'missing'} for ${safeUrl}`);
+                c.header('Content-Type', 'image/png');
+                c.header('Cache-Control', 'public, max-age=60');
+                c.header('X-Proxy-Reject', 'non-image');
+                return c.body(FALLBACK_IMAGE as any);
+            }
+
+            const contentLength = Number(response.headers.get('content-length') || '0');
+            if (contentLength > MAX_PROXY_IMAGE_BYTES) throw new Error('Image too large');
+
             const arrayBuffer = await response.arrayBuffer();
 
             if (arrayBuffer.byteLength === 0) throw new Error('Empty response');
+            if (arrayBuffer.byteLength > MAX_PROXY_IMAGE_BYTES) throw new Error('Image too large');
 
             const data = Buffer.from(arrayBuffer);
 
             // --- 2. Save to disk cache ---
-            await saveImageToCache(url, data, contentType);
+            await saveImageToCache(safeUrl, data, contentType);
 
             c.header('Content-Type', contentType);
             c.header('Cache-Control', 'public, max-age=31536000');
@@ -2045,6 +2119,9 @@ setInterval(() => {
 }, 120000);
 
 console.log('🔗 Blockchain monitoring started for wallet: 0x2645ceE3a2453D1B3d050796193504aD8e402d08');
+
+startAutoSourceRefresh();
+console.log(`📚 Auto source refresh ${autoSourceRefreshStatus.enabled ? 'enabled' : 'disabled'}: startup delay ${autoSourceRefreshStatus.startupDelaySeconds}s, interval ${autoSourceRefreshStatus.intervalMinutes}m`);
 
 export default {
     port: process.env.PORT || 3005,
