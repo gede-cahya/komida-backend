@@ -273,6 +273,51 @@ func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.Chapt
 		}
 	}
 	props, err := k.getInertiaProps(ctx, link)
+	if err != nil && strings.Contains(err.Error(), "status 404") {
+		oldSlug, chapNum := parseSlugAndChapterFromInertiaLink(link)
+		if oldSlug != "" && chapNum != "" {
+			query := strings.ReplaceAll(oldSlug, "-", " ")
+			results, searchErr := k.Search(ctx, query)
+			if (searchErr != nil || len(results) == 0) && strings.Contains(oldSlug, "-") {
+				words := strings.Split(oldSlug, "-")
+				var fallbackQueries []string
+				for _, w := range words {
+					if len(w) > 3 && w != "read" && w != "chapter" && w != "manga" {
+						fallbackQueries = append(fallbackQueries, w)
+					}
+				}
+				for i := 0; i < len(fallbackQueries); i++ {
+					for j := i + 1; j < len(fallbackQueries); j++ {
+						if len(fallbackQueries[i]) < len(fallbackQueries[j]) {
+							fallbackQueries[i], fallbackQueries[j] = fallbackQueries[j], fallbackQueries[i]
+						}
+					}
+				}
+				for _, q := range fallbackQueries {
+					results, searchErr = k.Search(ctx, q)
+					if searchErr == nil && len(results) > 0 {
+						break
+					}
+				}
+			}
+			if searchErr == nil && len(results) > 0 {
+				var bestMatchSlug string
+				for _, r := range results {
+					rSlug := cleanSlug(r.Title)
+					parts := strings.Split(strings.Trim(r.Link, "/"), "/")
+					resSlug := parts[len(parts)-1]
+					if rSlug == oldSlug || strings.Contains(resSlug, oldSlug) || strings.Contains(oldSlug, resSlug) {
+						bestMatchSlug = resSlug
+						break
+					}
+				}
+				if bestMatchSlug != "" {
+					newLink := fmt.Sprintf("%smanga/%s/chapter/%s", k.baseURL, bestMatchSlug, chapNum)
+					props, err = k.getInertiaProps(ctx, newLink)
+				}
+			}
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -458,4 +503,29 @@ func parseChapterNumberFromSlug(chapSlug string) string {
 		return strings.ReplaceAll(numStr, "-", ".")
 	}
 	return ""
+}
+
+func parseSlugAndChapterFromInertiaLink(link string) (string, string) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", ""
+	}
+	path := strings.Trim(u.Path, "/")
+	parts := strings.Split(path, "/")
+	if len(parts) >= 4 && parts[0] == "manga" && parts[2] == "chapter" {
+		return parts[1], parts[3]
+	}
+	return "", ""
+}
+
+func cleanSlug(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, "’", "")
+	s = strings.ReplaceAll(s, "'", "")
+	s = strings.ReplaceAll(s, " ", "-")
+	reg := regexp.MustCompile(`[^\w\-]+`)
+	s = reg.ReplaceAllString(s, "")
+	reg2 := regexp.MustCompile(`-+`)
+	s = reg2.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
 }
