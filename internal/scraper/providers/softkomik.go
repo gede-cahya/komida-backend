@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gede-cahya/komida-backend/internal/scraper"
@@ -112,53 +114,79 @@ func (s *SoftkomikScraper) ScrapePopular(ctx context.Context) ([]scraper.Scraped
 	return list, nil
 }
 
+func (s *SoftkomikScraper) fetchMangaBasicInfo(ctx context.Context, slug string) *scraper.ScrapedManga {
+	link := s.baseURL() + slug
+	detail, err := s.ScrapeDetail(ctx, link)
+	if err != nil {
+		return nil
+	}
+	latestChapter := "Read Now"
+	if len(detail.Chapters) > 0 {
+		latestChapter = detail.Chapters[0].Title
+	}
+	return &scraper.ScrapedManga{
+		Title:   detail.Title,
+		Image:   detail.Image,
+		Source:  s.Name(),
+		Chapter: latestChapter,
+		Link:    link,
+	}
+}
+
 func (s *SoftkomikScraper) Search(ctx context.Context, query string) ([]scraper.ScrapedManga, error) {
-	url := fmt.Sprintf("%s?s=%s", s.baseURL(), urlEncode(query))
-	resp, err := fetchWithContext(ctx, url, defaultHeaders())
+	resp, err := fetchWithContext(ctx, s.baseURL()+"sitemap.xml", defaultHeaders())
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	htmlBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	var list []scraper.ScrapedManga
-	doc.Find(".item-komik").Each(func(_ int, el *goquery.Selection) {
-		var title, link string
-		el.Find("a").Each(func(_ int, a *goquery.Selection) {
-			t := strings.TrimSpace(a.Text())
-			href, _ := a.Attr("href")
-			hasImg := a.Find("img").Length() > 0
-			if title == "" && t != "" && !hasImg && !strings.Contains(href, "/chapter/") && !strings.Contains(href, "/type/") {
-				title = t
-				link = href
-			}
-		})
-		imgEl := el.Find("img").First()
-		image := coalesceAttr(imgEl, "data-src", "src", "data-lazy-src")
-		if !strings.HasPrefix(image, "http") {
-			image = resolveImage(image, s.baseURL())
+	html := string(htmlBytes)
+
+	normalized := strings.ToLower(strings.ReplaceAll(query, " ", "-"))
+	re := regexp.MustCompile(`<loc>https://softkomik\.co/([^<\s]+)</loc>`)
+	var slugs []string
+	for _, m := range re.FindAllStringSubmatch(html, -1) {
+		slug := strings.TrimSpace(m[1])
+		if strings.Contains(slug, "/genre/") || strings.Contains(slug, "/type/") || strings.Contains(slug, "chapter/") {
+			continue
 		}
-		chapter := strings.TrimSpace(el.Find("a[href*=\"/chapter/\"]").Last().Text())
-		if chapter == "" {
-			chapter = "Unknown"
+		if strings.Contains(strings.ToLower(slug), normalized) {
+			slugs = append(slugs, slug)
 		}
-		if title != "" && link != "" {
-			fullLink := link
-			if !strings.HasPrefix(link, "http") {
-				fullLink = strings.TrimSuffix(s.baseURL(), "/") + link
-			}
-			list = append(list, scraper.ScrapedManga{
-				Title:   strings.TrimSpace(strings.Replace(title, "Bahasa Indonesia", "", -1)),
-				Image:   image,
-				Source:  s.Name(),
-				Chapter: chapter,
-				Link:    fullLink,
-			})
+	}
+
+	if len(slugs) == 0 {
+		return nil, nil
+	}
+
+	maxResults := 15
+	if len(slugs) > maxResults {
+		slugs = slugs[:maxResults]
+	}
+
+	var results []scraper.ScrapedManga
+	var wg sync.WaitGroup
+	batchResults := make([]*scraper.ScrapedManga, len(slugs))
+
+	for i, slug := range slugs {
+		wg.Add(1)
+		go func(idx int, slg string) {
+			defer wg.Done()
+			batchResults[idx] = s.fetchMangaBasicInfo(ctx, slg)
+		}(i, slug)
+	}
+	wg.Wait()
+
+	for _, r := range batchResults {
+		if r != nil {
+			results = append(results, *r)
 		}
-	})
-	return list, nil
+	}
+
+	return results, nil
 }
 
 func (s *SoftkomikScraper) ScrapeDetail(ctx context.Context, link string) (*scraper.MangaDetail, error) {
@@ -269,90 +297,33 @@ func (s *SoftkomikScraper) ScrapeDetail(ctx context.Context, link string) (*scra
 
 func (s *SoftkomikScraper) ScrapeChapter(ctx context.Context, link string) (*scraper.ChapterData, error) {
 	link = s.reroute(link)
-	buildID := s.getBuildID(ctx)
-	if buildID == "" {
-		return nil, fmt.Errorf("could not get buildId")
-	}
-	u, err := parseURL(link)
+
+	cmd := exec.CommandContext(ctx, "node", "/home/ubuntu/komida-backend/scrape_chapter.cjs", link)
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("puppeteer execution failed: %v", err)
 	}
-	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
-	if len(parts) < 3 || parts[1] != "chapter" {
-		return nil, fmt.Errorf("invalid chapter link format")
+
+	var result struct {
+		Images []string `json:"images"`
+		Prev   string   `json:"prev"`
+		Next   string   `json:"next"`
+		Error  string   `json:"error"`
 	}
-	mangaSlug := parts[0]
-	chapterSlug := parts[2]
-	jsonURL := fmt.Sprintf("%s_next/data/%s/%s/chapter/%s.json", s.baseURL(), buildID, mangaSlug, chapterSlug)
-	data, err := s.fetchJSON(ctx, jsonURL)
-	if err != nil {
-		s.buildID = ""
-		return nil, err
+
+	if err := json.Unmarshal(output, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse puppeteer output: %v, raw: %s", err, string(output))
 	}
-	pageProps, ok := data["pageProps"].(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("no pageProps")
+
+	if result.Error != "" {
+		return nil, fmt.Errorf("puppeteer scraper error: %s", result.Error)
 	}
-	var images []string
-	var chapterData map[string]any
-	if d, ok := pageProps["data"].(map[string]any); ok {
-		if dd, ok := d["data"].(map[string]any); ok {
-			chapterData = dd
-		} else {
-			chapterData = d
-		}
-	} else if c, ok := pageProps["chapter"].(map[string]any); ok {
-		chapterData = c
-	}
-	if chapterData != nil {
-		rawImages := chapterData["imageSrc"]
-		if rawImages == nil {
-			rawImages = chapterData["images"]
-		}
-		if arr, ok := rawImages.([]any); ok {
-			for _, v := range arr {
-				var imgURL string
-				if s, ok := v.(string); ok {
-					imgURL = s
-				} else if m, ok := v.(map[string]any); ok {
-					if u, ok := m["url"].(string); ok {
-						imgURL = u
-					} else if u, ok := m["src"].(string); ok {
-						imgURL = u
-					}
-				}
-				if imgURL == "" {
-					continue
-				}
-				if !strings.HasPrefix(imgURL, "http") {
-					if strings.HasPrefix(imgURL, "myUploads/") || strings.HasPrefix(imgURL, "img-file/") {
-						imgURL = "https://image.softkomik.com/softkomik/" + imgURL
-					} else {
-						imgURL = strings.TrimSuffix(s.baseURL(), "/") + "/" + strings.TrimPrefix(imgURL, "/")
-					}
-				}
-				if strings.HasPrefix(imgURL, "http") {
-					images = append(images, imgURL)
-				}
-			}
-		}
-	}
-	var next, prev string
-	if n, ok := pageProps["next_chapter"].(map[string]any); ok {
-		if slug, ok := n["slug"].(string); ok {
-			next = fmt.Sprintf("%s%s/chapter/%s", s.baseURL(), mangaSlug, slug)
-		}
-	} else if n, ok := pageProps["nextChapter"].(string); ok {
-		next = fmt.Sprintf("%s%s/chapter/%s", s.baseURL(), mangaSlug, n)
-	}
-	if p, ok := pageProps["prev_chapter"].(map[string]any); ok {
-		if slug, ok := p["slug"].(string); ok {
-			prev = fmt.Sprintf("%s%s/chapter/%s", s.baseURL(), mangaSlug, slug)
-		}
-	} else if p, ok := pageProps["prevChapter"].(string); ok {
-		prev = fmt.Sprintf("%s%s/chapter/%s", s.baseURL(), mangaSlug, p)
-	}
-	return &scraper.ChapterData{Images: images, Next: next, Prev: prev}, nil
+
+	return &scraper.ChapterData{
+		Images: result.Images,
+		Next:   result.Next,
+		Prev:   result.Prev,
+	}, nil
 }
 
 func (s *SoftkomikScraper) ScrapeGenres(ctx context.Context) ([]scraper.GenreItem, error) {

@@ -1,13 +1,27 @@
 package imageproxy
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/gede-cahya/komida-backend/internal/scraper"
+	"github.com/gede-cahya/komida-backend/internal/scraper/providers"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var fallbackImage = []byte{
@@ -26,6 +40,7 @@ type Server struct {
 	resolver *net.Resolver
 	sem      chan struct{}
 	logger   *slog.Logger
+	pool     *pgxpool.Pool
 }
 
 func NewServer(cfg Config, logger *slog.Logger) *Server {
@@ -82,11 +97,58 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, `{"status":"ok","service":"imageproxy"}`)
 }
 
+func (s *Server) SetDB(pool *pgxpool.Pool) {
+	s.pool = pool
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS komida_image_shares (
+			url_hash VARCHAR(64) PRIMARY KEY,
+			share_token VARCHAR(255) NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		s.logger.Error("failed to create komida_image_shares table", "error", err)
+	} else {
+		s.logger.Info("komida_image_shares table initialized")
+	}
+}
+
+func hashURL(rawURL string) string {
+	h := md5.New()
+	h.Write([]byte(rawURL))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 	rawURL := r.URL.Query().Get("url")
 	if rawURL == "" {
 		http.Error(w, "Missing url", http.StatusBadRequest)
 		return
+	}
+	originalURL := rawURL
+	rawURL = rerouteUpstreamURL(rawURL)
+
+	// 1. Check if we already have a 9Drive share token for this URL
+	if s.pool != nil {
+		var shareToken string
+		hash := hashURL(rawURL)
+		err := s.pool.QueryRow(r.Context(), "SELECT share_token FROM komida_image_shares WHERE url_hash = $1", hash).Scan(&shareToken)
+		if err == nil && shareToken != "" {
+			http.Redirect(w, r, "/public/files/"+shareToken+"/preview", http.StatusMovedPermanently)
+			return
+		}
+	} else {
+		hash := hashURL(rawURL)
+		token := getNineDriveToken()
+		ninedriveClient := &http.Client{Timeout: 60 * time.Second}
+		if fileId, err := findIn9Drive(r.Context(), ninedriveClient, token, hash); err == nil && fileId != "" {
+			if shareToken, err := create9DriveShare(r.Context(), ninedriveClient, token, fileId); err == nil && shareToken != "" {
+				http.Redirect(w, r, "/public/files/"+shareToken+"/preview", http.StatusMovedPermanently)
+				return
+			}
+		}
 	}
 	if cached, err := s.cache.Get(rawURL, false); err == nil {
 		writeImage(w, cached.ContentType, "HIT", "public, max-age=604800", cached.Data)
@@ -125,6 +187,10 @@ func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if newURL, healErr := s.healMangaCover(r.Context(), originalURL); healErr == nil && newURL != "" {
+			http.Redirect(w, r, "/api/image/proxy?url="+url.QueryEscape(newURL)+"&source="+source, http.StatusMovedPermanently)
+			return
+		}
 		s.logger.Warn("image upstream returned non-ok", "url", rawURL, "status", resp.StatusCode)
 		s.writeStaleOrFallback(w, rawURL)
 		return
@@ -144,10 +210,190 @@ func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 		s.writeStaleOrFallback(w, rawURL)
 		return
 	}
+
+	// 2. Upload to 9Drive and share it
+	hash := hashURL(rawURL)
+	ext := extensionFromMime(contentType)
+	filename := hash + ext
+	token := getNineDriveToken()
+	ninedriveClient := &http.Client{Timeout: 60 * time.Second}
+	bgCtx := context.Background()
+
+	fileId, uploadErr := uploadTo9Drive(bgCtx, ninedriveClient, token, filename, contentType, body)
+	if uploadErr == nil {
+		shareToken, shareErr := create9DriveShare(bgCtx, ninedriveClient, token, fileId)
+		if shareErr == nil {
+			if s.pool != nil {
+				_, dbErr := s.pool.Exec(bgCtx, "INSERT INTO komida_image_shares (url_hash, share_token) VALUES ($1, $2) ON CONFLICT (url_hash) DO NOTHING", hash, shareToken)
+				if dbErr != nil {
+					s.logger.Error("failed to insert share mapping", "error", dbErr)
+				}
+			}
+			_ = s.cache.Set(rawURL, body, contentType)
+			http.Redirect(w, r, "/public/files/"+shareToken+"/preview", http.StatusMovedPermanently)
+			return
+		} else {
+			s.logger.Error("failed to create 9drive share", "error", shareErr)
+		}
+	} else {
+		s.logger.Error("failed to upload to 9drive", "error", uploadErr)
+	}
+
 	if err := s.cache.Set(rawURL, body, contentType); err != nil {
 		s.logger.Warn("image cache write failed", "url", rawURL, "error", err)
 	}
 	writeImage(w, contentType, "MISS", "public, max-age=31536000", body)
+}
+
+func getNineDriveToken() string {
+	if t := os.Getenv("NINEDRIVE_TOKEN"); t != "" {
+		return t
+	}
+	return "9d_live_ALhIbWpJvDaFk0Pu7f7Qx-z0g95Ad1YY1rcEzyYomBc"
+}
+
+func extensionFromMime(mime string) string {
+	switch mime {
+	case "image/png":
+		return ".png"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	default:
+		return ".jpg"
+	}
+}
+
+func uploadTo9Drive(ctx context.Context, client *http.Client, token string, filename string, contentType string, data []byte) (string, error) {
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+
+	meta := []map[string]string{
+		{
+			"fieldName": "file-0",
+			"fileName":  filename,
+			"mimeType":  contentType,
+			"sizeBytes": strconv.Itoa(len(data)),
+		},
+	}
+	metaBytes, _ := json.Marshal(meta)
+	if err := w.WriteField("filesMeta", string(metaBytes)); err != nil {
+		return "", err
+	}
+
+	part, err := w.CreateFormFile("file-0", filename)
+	if err != nil {
+		return "", err
+	}
+	if _, err := part.Write(data); err != nil {
+		return "", err
+	}
+	w.Close()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "http://localhost:4000/api/v1/uploads", &b)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("upload failed: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Files []struct {
+			Id string `json:"id"`
+		} `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if len(result.Files) == 0 {
+		return "", fmt.Errorf("no files returned in upload response")
+	}
+
+	return result.Files[0].Id, nil
+}
+
+func create9DriveShare(ctx context.Context, client *http.Client, token string, fileId string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("http://localhost:4000/api/v1/files/%s/share", fileId), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("share failed: status=%d, body=%s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	parsed, err := url.Parse(result.URL)
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(parsed.Path, "/")
+	if len(parts) == 0 {
+		return "", fmt.Errorf("invalid share URL path: %s", parsed.Path)
+	}
+	shareToken := parts[len(parts)-1]
+	return shareToken, nil
+}
+
+func findIn9Drive(ctx context.Context, client *http.Client, token string, q string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:4000/api/v1/files?q="+url.QueryEscape(q), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("files query failed: status=%d", resp.StatusCode)
+	}
+
+	var result struct {
+		Files []struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"files"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	for _, f := range result.Files {
+		if strings.Contains(f.Name, q) {
+			return f.Id, nil
+		}
+	}
+	return "", nil
 }
 
 func (s *Server) writeStaleOrFallback(w http.ResponseWriter, rawURL string) {
@@ -162,7 +408,6 @@ func writeImage(w http.ResponseWriter, contentType string, cacheStatus string, c
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", cacheControl)
 	w.Header().Set("X-Cache", cacheStatus)
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(body)
 }
@@ -175,4 +420,48 @@ func writeJSON(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(body))
+}
+
+func (s *Server) healMangaCover(ctx context.Context, oldURL string) (string, error) {
+	if s.pool == nil {
+		return "", errors.New("no database connection")
+	}
+
+	var title, link, source string
+	err := s.pool.QueryRow(ctx, "SELECT title, link, source FROM manga WHERE image = $1 LIMIT 1", oldURL).Scan(&title, &link, &source)
+	if err != nil {
+		return "", fmt.Errorf("find manga by image: %w", err)
+	}
+
+	s.logger.Info("attempting to self-heal cover image", "title", title, "source", source)
+
+	var provider interface {
+		ScrapeDetail(ctx context.Context, link string) (*scraper.MangaDetail, error)
+	}
+
+	switch strings.ToLower(source) {
+	case "kiryuu":
+		provider = providers.NewKiryuu()
+	case "softkomik":
+		provider = &providers.SoftkomikScraper{}
+	default:
+		return "", fmt.Errorf("unsupported self-heal source: %s", source)
+	}
+
+	detail, err := provider.ScrapeDetail(ctx, link)
+	if err != nil {
+		return "", fmt.Errorf("scrape detail for self-heal: %w", err)
+	}
+	if detail == nil || detail.Image == "" {
+		return "", errors.New("scraped cover image is empty")
+	}
+
+	// Update the database with the new cover image URL
+	_, err = s.pool.Exec(ctx, "UPDATE manga SET image = $1 WHERE title = $2 AND source = $3", detail.Image, title, source)
+	if err != nil {
+		s.logger.Warn("failed to update manga cover image in DB", "error", err)
+	}
+
+	s.logger.Info("successfully self-healed cover image", "title", title, "new_url", detail.Image)
+	return detail.Image, nil
 }

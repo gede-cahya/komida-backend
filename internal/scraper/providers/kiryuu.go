@@ -3,12 +3,12 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
+	"html"
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -17,19 +17,15 @@ import (
 
 const kiryuuName = "Kiryuu"
 
-var chapterIDRegex = regexp.MustCompile(`\.(\d+)/?$`)
-
 type Kiryuu struct {
-	baseURL       string
-	client        *http.Client
-	genreMapCache map[string]int
+	baseURL string
+	client  *http.Client
 }
 
 func NewKiryuu() *Kiryuu {
 	return &Kiryuu{
-		baseURL:       "https://v5.kiryuu.to/",
-		client:        defaultHTTPClient,
-		genreMapCache: make(map[string]int),
+		baseURL: "https://kiryuuid.net/",
+		client:  defaultHTTPClient,
 	}
 }
 
@@ -40,33 +36,14 @@ func (k *Kiryuu) reroute(link string) string {
 	if err != nil {
 		return link
 	}
-	base, _ := url.Parse(k.baseURL)
-	// Only reroute relative URLs or URLs on a kiryuu domain
-	if parsed.Host == "" {
-		// Relative URL
-		parsed.Scheme = base.Scheme
-		parsed.Host = base.Host
-		return parsed.String()
+	parsed.Scheme = "https"
+	parsed.Host = "kiryuuid.net"
+	path := parsed.Path
+	if strings.HasPrefix(path, "/manga/") {
+		path = strings.TrimSuffix(path, "/")
 	}
-	lowerHost := strings.ToLower(parsed.Host)
-	if strings.Contains(lowerHost, "kiryuu") {
-		parsed.Scheme = base.Scheme
-		parsed.Host = base.Host
-		return parsed.String()
-	}
-	// External host (e.g. yuucdn.com, blogger.googleusercontent.com) - keep as-is
-	if parsed.Scheme == "" {
-		parsed.Scheme = "https"
-	}
+	parsed.Path = path
 	return parsed.String()
-}
-
-func (k *Kiryuu) normalizeURL(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" || strings.HasPrefix(raw, "data:image") {
-		return raw
-	}
-	return k.reroute(raw)
 }
 
 func (k *Kiryuu) fetch(ctx context.Context, link string) (*goquery.Document, error) {
@@ -86,208 +63,198 @@ func (k *Kiryuu) fetch(ctx context.Context, link string) (*goquery.Document, err
 	return goquery.NewDocumentFromReader(resp.Body)
 }
 
-func (k *Kiryuu) fetchJSON(ctx context.Context, link string) (map[string]any, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
+func (k *Kiryuu) getInertiaProps(ctx context.Context, link string) (map[string]any, error) {
+	doc, err := k.fetch(ctx, link)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Referer", k.baseURL)
-	resp, err := k.client.Do(req)
-	if err != nil {
+	appDiv := doc.Find("#app")
+	if appDiv.Length() == 0 {
+		return nil, fmt.Errorf("#app element not found for %s", link)
+	}
+	dataPage, exists := appDiv.Attr("data-page")
+	if !exists {
+		return nil, fmt.Errorf("data-page attribute not found for %s", link)
+	}
+	dataPage = html.UnescapeString(dataPage)
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(dataPage), &parsed); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("upstream status %d for %s", resp.StatusCode, link)
+	props, ok := parsed["props"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("props not found in Inertia data for %s", link)
 	}
-	var data map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (k *Kiryuu) fetchJSONArray(ctx context.Context, link string) ([]map[string]any, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Referer", k.baseURL)
-	resp, err := k.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("upstream status %d for %s", resp.StatusCode, link)
-	}
-	var data []map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, err
-	}
-	return data, nil
+	return props, nil
 }
 
 func (k *Kiryuu) ScrapePopular(ctx context.Context) ([]scraper.ScrapedManga, error) {
-	doc, err := k.fetch(ctx, k.baseURL)
+	props, err := k.getInertiaProps(ctx, k.baseURL)
 	if err != nil {
 		return nil, err
 	}
-	var results []scraper.ScrapedManga
-	doc.Find("div#latest-list.grid > div").Each(func(_ int, s *goquery.Selection) {
-		title := strings.TrimSpace(s.Find("h1").Text())
-		link, _ := s.Find("a").First().Attr("href")
-		img := s.Find("img.wp-post-image")
-		image, _ := img.Attr("data-src")
-		if image == "" {
-			image, _ = img.Attr("data-lazy-src")
+
+	popularManga, ok := props["popularManga"].([]any)
+	if !ok {
+		return []scraper.ScrapedManga{}, nil
+	}
+
+	results := make([]scraper.ScrapedManga, 0, len(popularManga))
+	for _, itemVal := range popularManga {
+		item, ok := itemVal.(map[string]any)
+		if !ok {
+			continue
 		}
-		if image == "" {
-			image, _ = img.Attr("src")
+		title, _ := item["title"].(string)
+		slug, _ := item["slug"].(string)
+		image, _ := item["poster"].(string)
+		link := fmt.Sprintf("%smanga/%s", k.baseURL, slug)
+
+		chapter := "Read Now"
+		if lastChapter, ok := item["last_chapter"].(map[string]any); ok {
+			if chapTitle, ok := lastChapter["title"].(string); ok && chapTitle != "" {
+				chapter = chapTitle
+			}
 		}
-		if strings.HasPrefix(image, "data:image") {
-			srcset, _ := img.Attr("srcset")
-			image = strings.Split(srcset, " ")[0]
+
+		var rating float64
+		if ratingVal, ok := item["rating"]; ok && ratingVal != nil {
+			if rFloat, ok := ratingVal.(float64); ok {
+				rating = rFloat
+			}
 		}
-		chapters := s.Find("a.link-self")
-		chapter := strings.TrimSpace(chapters.First().Find("p").Text())
-		if chapter == "" {
-			chapter = strings.TrimSpace(chapters.First().Text())
-		}
-		prevChapter := strings.TrimSpace(chapters.Eq(1).Find("p").Text())
-		if prevChapter == "" {
-			prevChapter = strings.TrimSpace(chapters.Eq(1).Text())
-		}
-		if title != "" && link != "" {
+
+		if title != "" && slug != "" {
 			results = append(results, scraper.ScrapedManga{
-				Title:           title,
-				Image:           k.normalizeURL(image),
-				Source:          kiryuuName,
-				Chapter:         chapter,
-				PreviousChapter: strPtr(prevChapter),
-				Link:            link,
+				Title:   title,
+				Image:   image,
+				Source:  kiryuuName,
+				Chapter: chapter,
+				Link:    link,
+				Rating:  rating,
 			})
 		}
-	})
+	}
 	return results, nil
 }
 
 func (k *Kiryuu) Search(ctx context.Context, query string) ([]scraper.ScrapedManga, error) {
-	apiURL := fmt.Sprintf("%swp-json/wp/v2/manga?search=%s&_embed", k.baseURL, url.QueryEscape(query))
-	data, err := k.fetchJSONArray(ctx, apiURL)
+	searchURL := fmt.Sprintf("%smanga?search=%s", k.baseURL, url.QueryEscape(query))
+	props, err := k.getInertiaProps(ctx, searchURL)
 	if err != nil {
 		return nil, err
 	}
-	results := make([]scraper.ScrapedManga, 0, len(data))
-	for _, item := range data {
-		titleRaw, _ := item["title"].(map[string]any)
-		title := "Unknown Title"
-		if titleRaw != nil {
-			rendered, _ := titleRaw["rendered"].(string)
-			title = decodeHtmlEntities(rendered)
+
+	mangasMap, ok := props["mangas"].(map[string]any)
+	if !ok {
+		return []scraper.ScrapedManga{}, nil
+	}
+
+	mangaData, ok := mangasMap["data"].([]any)
+	if !ok {
+		return []scraper.ScrapedManga{}, nil
+	}
+
+	results := make([]scraper.ScrapedManga, 0, len(mangaData))
+	for _, itemVal := range mangaData {
+		item, ok := itemVal.(map[string]any)
+		if !ok {
+			continue
 		}
-		link, _ := item["link"].(string)
-		image := ""
-		embedded, ok := item["_embedded"].(map[string]any)
-		if ok {
-			media, ok := embedded["wp:featuredmedia"].([]any)
-			if ok && len(media) > 0 {
-				mediaMap, ok := media[0].(map[string]any)
-				if ok {
-					image, _ = mediaMap["source_url"].(string)
-				}
+		title, _ := item["title"].(string)
+		slug, _ := item["slug"].(string)
+		image, _ := item["poster"].(string)
+		link := fmt.Sprintf("%smanga/%s", k.baseURL, slug)
+
+		chapter := "Read Now"
+		if lastChapter, ok := item["last_chapter"].(map[string]any); ok {
+			if chapTitle, ok := lastChapter["title"].(string); ok && chapTitle != "" {
+				chapter = chapTitle
 			}
 		}
-		results = append(results, scraper.ScrapedManga{
-			Title:   title,
-			Image:   k.normalizeURL(image),
-			Source:  kiryuuName,
-			Chapter: "Read Now",
-			Link:    link,
-			Rating:  0,
-		})
+
+		var rating float64
+		if ratingVal, ok := item["rating"]; ok && ratingVal != nil {
+			if rFloat, ok := ratingVal.(float64); ok {
+				rating = rFloat
+			}
+		}
+
+		if title != "" && slug != "" {
+			results = append(results, scraper.ScrapedManga{
+				Title:   title,
+				Image:   image,
+				Source:  kiryuuName,
+				Chapter: chapter,
+				Link:    link,
+				Rating:  rating,
+			})
+		}
 	}
 	return results, nil
 }
 
 func (k *Kiryuu) ScrapeDetail(ctx context.Context, link string) (*scraper.MangaDetail, error) {
 	link = k.reroute(link)
-	doc, err := k.fetch(ctx, link)
+	props, err := k.getInertiaProps(ctx, link)
 	if err != nil {
 		return nil, err
 	}
 
-	title := strings.TrimSpace(doc.Find(`h1[itemprop="name"]`).First().Text())
-	if title == "" {
-		title = strings.TrimSpace(doc.Find("h1").First().Text())
+	manga, ok := props["manga"].(map[string]any)
+	if !ok {
+		return nil, errors.New("manga details not found in props")
 	}
 
-	imgEl := doc.Find("img.wp-post-image").First()
-	if imgEl.Length() == 0 {
-		imgEl = doc.Find(`img[itemprop="image"]`).First()
-	}
-	if imgEl.Length() == 0 {
-		imgEl = doc.Find(".thumb img").First()
-	}
-	image, _ := imgEl.Attr("data-src")
-	if image == "" {
-		image, _ = imgEl.Attr("data-lazy-src")
-	}
-	if image == "" {
-		image, _ = imgEl.Attr("src")
-	}
-	if strings.HasPrefix(image, "data:image") {
-		srcset, _ := imgEl.Attr("srcset")
-		image = strings.Split(srcset, " ")[0]
-	}
+	title, _ := manga["title"].(string)
+	image, _ := manga["poster"].(string)
+	synopsis, _ := manga["synopsis"].(string)
+	author, _ := manga["author"].(string)
+	status, _ := manga["status"].(string)
+	mangaSlug, _ := manga["slug"].(string)
 
-	synopsis := strings.TrimSpace(doc.Find(`div[itemprop="description"]`).First().Text())
-	if synopsis == "" {
-		synopsis = strings.TrimSpace(doc.Find(".entry-content").First().Text())
-	}
-	if synopsis == "" {
-		synopsis = strings.TrimSpace(doc.Find(".seriestucon").First().Text())
-	}
-
-	genres := doc.Find(`a[itemprop="genre"]`).Map(func(_ int, s *goquery.Selection) string {
-		return strings.TrimSpace(s.Text())
-	})
-	if len(genres) == 0 {
-		genres = doc.Find(".gnr a, .mgen a, .seriestugenre a, a[href*=\"/genre/\"]").Map(func(_ int, s *goquery.Selection) string {
-			return strings.TrimSpace(s.Text())
-		})
-	}
-	genres = uniqueStrings(genres)
-
-	status := "Ongoing"
-	doc.Find(".tsinfo .imptdt").Each(func(_ int, s *goquery.Selection) {
-		label := strings.ToLower(s.Text())
-		if strings.Contains(label, "status") {
-			status = strings.TrimSpace(s.Find("i").Text())
+	var rating float64
+	if ratingVal, ok := manga["rating"]; ok && ratingVal != nil {
+		if rFloat, ok := ratingVal.(float64); ok {
+			rating = rFloat
 		}
-	})
-
-	author := "Unknown"
-	doc.Find(".tsinfo .imptdt").Each(func(_ int, s *goquery.Selection) {
-		label := strings.ToLower(s.Text())
-		if strings.Contains(label, "author") {
-			author = strings.TrimSpace(s.Find("i").Text())
-		}
-	})
-
-	ratingText := strings.TrimSpace(doc.Find(`[itemprop="ratingValue"]`).Text())
-	if ratingText == "" {
-		ratingText = strings.TrimSpace(doc.Find(".num").Text())
 	}
-	rating, _ := strconv.ParseFloat(ratingText, 64)
 
-	chapters := k.scrapeChapters(ctx, doc)
+	genresList, _ := manga["genres"].([]any)
+	genres := make([]string, 0, len(genresList))
+	for _, gVal := range genresList {
+		if gMap, ok := gVal.(map[string]any); ok {
+			if gName, ok := gMap["name"].(string); ok && gName != "" {
+				genres = append(genres, gName)
+			}
+		}
+	}
+
+	chaptersList, _ := manga["chapters"].([]any)
+	chapters := make([]scraper.MangaChapter, 0, len(chaptersList))
+	for _, cVal := range chaptersList {
+		cMap, ok := cVal.(map[string]any)
+		if !ok {
+			continue
+		}
+		cTitle, _ := cMap["title"].(string)
+		cNumber := cMap["chapter_number"]
+		released, _ := cMap["created_at"].(string)
+
+		cLink := fmt.Sprintf("%smanga/%s/chapter/%v", k.baseURL, mangaSlug, cNumber)
+
+		if cTitle != "" {
+			chapters = append(chapters, scraper.MangaChapter{
+				Title:    cTitle,
+				Link:     cLink,
+				Released: released,
+			})
+		}
+	}
 
 	return &scraper.MangaDetail{
 		Title:    title,
-		Image:    k.normalizeURL(image),
+		Image:    image,
 		Synopsis: synopsis,
 		Genres:   genres,
 		Author:   author,
@@ -297,211 +264,48 @@ func (k *Kiryuu) ScrapeDetail(ctx context.Context, link string) (*scraper.MangaD
 	}, nil
 }
 
-func (k *Kiryuu) scrapeChapters(ctx context.Context, doc *goquery.Document) []scraper.MangaChapter {
-	var chapters []scraper.MangaChapter
-
-	ajaxContainer := doc.Find(`div[hx-trigger="getChapterList"]`)
-	if ajaxContainer.Length() > 0 {
-		ajaxURL, exists := ajaxContainer.Attr("hx-get")
-		if exists && ajaxURL != "" {
-			ajaxURL = strings.ReplaceAll(ajaxURL, "&#038;", "&")
-			if u, err := url.Parse(ajaxURL); err == nil && !u.IsAbs() {
-				ajaxURL = k.baseURL + strings.TrimPrefix(ajaxURL, "/")
-			}
-			if ajaxDoc, err := k.fetch(ctx, ajaxURL); err == nil {
-				ajaxDoc.Find("div[data-chapter-number]").Each(func(_ int, s *goquery.Selection) {
-					linkEl := s.Find("a").First()
-					title := strings.TrimSpace(linkEl.Find(".flex.flex-row.gap-1 span").Text())
-					if title == "" {
-						title = strings.TrimSpace(linkEl.Text())
-					}
-					chapLink, _ := linkEl.Attr("href")
-					released := linkEl.Find("time").AttrOr("datetime", linkEl.Find("time").Text())
-					if chapLink != "" {
-						chapters = append(chapters, scraper.MangaChapter{
-							Title:    title,
-							Link:     resolveURL(chapLink, k.baseURL),
-							Released: released,
-						})
-					}
-				})
-			}
-		}
-	}
-
-	if len(chapters) == 0 {
-		doc.Find("#chapterlist ul li, .eplister li, .rclist > li, #cl ul li").Each(func(_ int, s *goquery.Selection) {
-			linkEl := s.Find("a")
-			title := strings.TrimSpace(linkEl.Find(".chapternum").Text())
-			if title == "" {
-				title = strings.TrimSpace(linkEl.Text())
-			}
-			chapLink, _ := linkEl.Attr("href")
-			released := strings.TrimSpace(s.Find(".chapterdate").Text())
-			if title != "" && chapLink != "" {
-				chapters = append(chapters, scraper.MangaChapter{
-					Title:    title,
-					Link:     chapLink,
-					Released: released,
-				})
-			}
-		})
-	}
-
-	if len(chapters) == 0 {
-		doc.Find("a").Each(func(_ int, s *goquery.Selection) {
-			chapLink, exists := s.Attr("href")
-			if !exists || chapLink == "" || chapLink == "#" {
-				return
-			}
-			if !strings.Contains(chapLink, "chapter") || !strings.HasPrefix(chapLink, k.baseURL) {
-				return
-			}
-			title := strings.TrimSpace(s.Find(".chapternum").Text())
-			if title == "" || len(title) > 50 {
-				title = strings.TrimSpace(s.Text())
-			}
-			if title == "" || len(title) > 50 {
-				match := regexp.MustCompile(`chapter-([0-9.]+)`).FindStringSubmatch(chapLink)
-				if len(match) > 1 {
-					title = "Chapter " + match[1]
-				} else {
-					title = "Chapter"
-				}
-			}
-			found := false
-			for _, c := range chapters {
-				if c.Link == chapLink {
-					found = true
-					break
-				}
-			}
-			if !found {
-				chapters = append(chapters, scraper.MangaChapter{
-					Title: title,
-					Link:  chapLink,
-				})
-			}
-		})
-	}
-
-	return chapters
-}
-
 func (k *Kiryuu) ScrapeChapter(ctx context.Context, link string) (*scraper.ChapterData, error) {
 	link = k.reroute(link)
-	images := []string{}
-	var next, prev string
+	if strings.Contains(link, "-chapter-") || strings.Contains(link, "/chapter-") {
+		mangaSlug, chapNum := parseMangaAndChapterFromWordPressLink(link)
+		if mangaSlug != "" && chapNum != "" {
+			link = fmt.Sprintf("%smanga/%s/chapter/%s", k.baseURL, mangaSlug, chapNum)
+		}
+	}
+	props, err := k.getInertiaProps(ctx, link)
+	if err != nil {
+		return nil, err
+	}
 
-	if match := chapterIDRegex.FindStringSubmatch(link); len(match) > 1 {
-		chapterID := match[1]
-		apiURL := fmt.Sprintf("%swp-json/wp/v2/chapter/%s", k.baseURL, chapterID)
-		if data, err := k.fetchJSON(ctx, apiURL); err == nil {
-			content, ok := data["content"].(map[string]any)
-			if ok {
-				rendered, ok := content["rendered"].(string)
-				if ok && rendered != "" {
-					doc, err := goquery.NewDocumentFromReader(strings.NewReader(rendered))
-					if err == nil {
-						doc.Find("img").Each(func(_ int, s *goquery.Selection) {
-							src, _ := s.Attr("src")
-							if src != "" && !strings.HasPrefix(src, "data:image") {
-								images = append(images, k.normalizeURL(src))
-							}
-						})
-					}
-				}
+	chapter, ok := props["chapter"].(map[string]any)
+	if !ok {
+		return nil, errors.New("chapter details not found in props")
+	}
+
+	manga, ok := props["manga"].(map[string]any)
+	if !ok {
+		return nil, errors.New("manga details not found in chapter props")
+	}
+	mangaSlug, _ := manga["slug"].(string)
+
+	imagesList, _ := chapter["images"].([]any)
+	images := make([]string, 0, len(imagesList))
+	for _, imgVal := range imagesList {
+		if imgMap, ok := imgVal.(map[string]any); ok {
+			if path, ok := imgMap["image_path"].(string); ok && path != "" {
+				images = append(images, strings.TrimSpace(path))
 			}
 		}
 	}
 
-	if len(images) == 0 {
-		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-		resp, err := k.client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("upstream status %d for %s", resp.StatusCode, link)
-		}
-		body, _ := io.ReadAll(resp.Body)
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
-		if err != nil {
-			return nil, err
-		}
-
-		doc.Find("#readerarea img").Each(func(_ int, s *goquery.Selection) {
-			src, _ := s.Attr("data-src")
-			if src == "" {
-				src, _ = s.Attr("src")
-			}
-			if src != "" && !strings.HasPrefix(src, "data:image") {
-				images = append(images, k.normalizeURL(src))
-			}
-		})
-
-		if len(images) == 0 {
-			doc.Find(`section[data-image-data] img`).Each(func(_ int, s *goquery.Selection) {
-				src, _ := s.Attr("src")
-				if src == "" {
-					src, _ = s.Attr("data-src")
-				}
-				if src != "" && !strings.HasPrefix(src, "data:image") {
-					images = append(images, k.normalizeURL(src))
-				}
-			})
-		}
-
-		if len(images) == 0 {
-			doc.Find("script").Each(func(_ int, s *goquery.Selection) {
-				text := s.Text()
-				if !strings.Contains(text, "ts_reader") {
-					return
-				}
-				match := regexp.MustCompile(`ts_reader\.run\((.*?)\);`).FindStringSubmatch(text)
-				if len(match) < 2 {
-					return
-				}
-				var data struct {
-					Sources []struct {
-						Images []string `json:"images"`
-					} `json:"sources"`
-				}
-				if err := json.Unmarshal([]byte(match[1]), &data); err == nil {
-					for _, src := range data.Sources {
-						for _, img := range src.Images {
-							if img != "" && !strings.HasPrefix(img, "data:image") {
-								images = append(images, k.normalizeURL(img))
-							}
-						}
-					}
-				}
-			})
-		}
-
-		next = doc.Find(`a[aria-label="Next"]`).AttrOr("href", "")
-		if next == "" {
-			next = doc.Find(".nextprev a.next_ch").AttrOr("href", "")
-		}
-		if next == "" {
-			next = doc.Find(`a[rel="next"]`).AttrOr("href", "")
-		}
-		if next == "#" || next == "" || next == "javascript:void(0)" {
-			next = ""
-		}
-
-		prev = doc.Find(`a[aria-label="Prev"]`).AttrOr("href", "")
-		if prev == "" {
-			prev = doc.Find(".nextprev a.prev_ch").AttrOr("href", "")
-		}
-		if prev == "" {
-			prev = doc.Find(`a[rel="prev"]`).AttrOr("href", "")
-		}
-		if prev == "#" || prev == "" || prev == "javascript:void(0)" {
-			prev = ""
-		}
+	var next, prev string
+	if nextChapter, ok := props["next"].(map[string]any); ok && nextChapter != nil {
+		nextNum := nextChapter["chapter_number"]
+		next = fmt.Sprintf("%smanga/%s/chapter/%v", k.baseURL, mangaSlug, nextNum)
+	}
+	if prevChapter, ok := props["prev"].(map[string]any); ok && prevChapter != nil {
+		prevNum := prevChapter["chapter_number"]
+		prev = fmt.Sprintf("%smanga/%s/chapter/%v", k.baseURL, mangaSlug, prevNum)
 	}
 
 	return &scraper.ChapterData{
@@ -549,67 +353,109 @@ func (k *Kiryuu) ScrapeGenres(ctx context.Context) ([]scraper.GenreItem, error) 
 }
 
 func (k *Kiryuu) ScrapeByGenre(ctx context.Context, genre string, page int) ([]scraper.ScrapedManga, error) {
-	genreID, err := k.getGenreID(ctx, genre)
+	genreURL := fmt.Sprintf("%smanga?genre=%s&page=%d", k.baseURL, url.QueryEscape(genre), page)
+	props, err := k.getInertiaProps(ctx, genreURL)
 	if err != nil {
 		return nil, err
 	}
-	if genreID == 0 {
+
+	mangasMap, ok := props["mangas"].(map[string]any)
+	if !ok {
 		return []scraper.ScrapedManga{}, nil
 	}
-	apiURL := fmt.Sprintf("%swp-json/wp/v2/manga?genre=%d&page=%d&_embed", k.baseURL, genreID, page)
-	data, err := k.fetchJSONArray(ctx, apiURL)
-	if err != nil {
-		return nil, err
+
+	mangaData, ok := mangasMap["data"].([]any)
+	if !ok {
+		return []scraper.ScrapedManga{}, nil
 	}
-	results := make([]scraper.ScrapedManga, 0, len(data))
-	for _, item := range data {
-		titleRaw, _ := item["title"].(map[string]any)
-		title := "Unknown Title"
-		if titleRaw != nil {
-			rendered, _ := titleRaw["rendered"].(string)
-			title = decodeHtmlEntities(rendered)
+
+	results := make([]scraper.ScrapedManga, 0, len(mangaData))
+	for _, itemVal := range mangaData {
+		item, ok := itemVal.(map[string]any)
+		if !ok {
+			continue
 		}
-		link, _ := item["link"].(string)
-		image := ""
-		embedded, ok := item["_embedded"].(map[string]any)
-		if ok {
-			media, ok := embedded["wp:featuredmedia"].([]any)
-			if ok && len(media) > 0 {
-				mediaMap, ok := media[0].(map[string]any)
-				if ok {
-					image, _ = mediaMap["source_url"].(string)
-				}
+		title, _ := item["title"].(string)
+		slug, _ := item["slug"].(string)
+		image, _ := item["poster"].(string)
+		link := fmt.Sprintf("%smanga/%s", k.baseURL, slug)
+
+		chapter := "Read Now"
+		if lastChapter, ok := item["last_chapter"].(map[string]any); ok {
+			if chapTitle, ok := lastChapter["title"].(string); ok && chapTitle != "" {
+				chapter = chapTitle
 			}
 		}
-		results = append(results, scraper.ScrapedManga{
-			Title:   title,
-			Image:   k.normalizeURL(image),
-			Source:  kiryuuName,
-			Chapter: "Read Now",
-			Link:    link,
-			Rating:  0,
-		})
+
+		var rating float64
+		if ratingVal, ok := item["rating"]; ok && ratingVal != nil {
+			if rFloat, ok := ratingVal.(float64); ok {
+				rating = rFloat
+			}
+		}
+
+		if title != "" && slug != "" {
+			results = append(results, scraper.ScrapedManga{
+				Title:   title,
+				Image:   image,
+				Source:  kiryuuName,
+				Chapter: chapter,
+				Link:    link,
+				Rating:  rating,
+			})
+		}
 	}
 	return results, nil
 }
 
-func (k *Kiryuu) getGenreID(ctx context.Context, slug string) (int, error) {
-	if id, ok := k.genreMapCache[slug]; ok {
-		return id, nil
-	}
-	apiURL := fmt.Sprintf("%swp-json/wp/v2/genre?slug=%s", k.baseURL, url.QueryEscape(slug))
-	data, err := k.fetchJSONArray(ctx, apiURL)
+func parseMangaAndChapterFromWordPressLink(link string) (string, string) {
+	parsed, err := url.Parse(link)
 	if err != nil {
-		return 0, err
+		return "", ""
 	}
-	if len(data) == 0 {
-		return 0, nil
+	path := strings.Trim(parsed.Path, "/")
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 {
+		return "", ""
 	}
-	idFloat, ok := data[0]["id"].(float64)
-	if !ok {
-		return 0, nil
+	lastPart := parts[len(parts)-1]
+
+	if len(parts) >= 2 && strings.HasPrefix(lastPart, "chapter-") {
+		mangaSlug := parts[len(parts)-2]
+		chapNumber := parseChapterNumberFromSlug(lastPart)
+		return mangaSlug, chapNumber
 	}
-	id := int(idFloat)
-	k.genreMapCache[slug] = id
-	return id, nil
+
+	re := regexp.MustCompile(`^(.*?)-chapter-([0-9.-]+)$`)
+	match := re.FindStringSubmatch(lastPart)
+	if len(match) > 2 {
+		mangaSlug := match[1]
+		numStr := match[2]
+		if strings.Contains(numStr, ".") {
+			subParts := strings.Split(numStr, ".")
+			if len(subParts[1]) >= 5 {
+				numStr = subParts[0]
+			}
+		}
+		numStr = strings.ReplaceAll(numStr, "-", ".")
+		return mangaSlug, numStr
+	}
+
+	return "", ""
+}
+
+func parseChapterNumberFromSlug(chapSlug string) string {
+	re := regexp.MustCompile(`chapter-([0-9.-]+)`)
+	match := re.FindStringSubmatch(chapSlug)
+	if len(match) > 1 {
+		numStr := match[1]
+		if strings.Contains(numStr, ".") {
+			subParts := strings.Split(numStr, ".")
+			if len(subParts[1]) >= 5 {
+				return subParts[0]
+			}
+		}
+		return strings.ReplaceAll(numStr, "-", ".")
+	}
+	return ""
 }
