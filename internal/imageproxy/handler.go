@@ -444,6 +444,10 @@ func (s *Server) healMangaCover(ctx context.Context, oldURL string) (string, err
 		provider = providers.NewKiryuu()
 	case "softkomik":
 		provider = &providers.SoftkomikScraper{}
+	case "manhwaindo":
+		provider = &providers.ManhwaIndoScraper{}
+	case "keikomik":
+		provider = &providers.KeikomikScraper{}
 	default:
 		return "", fmt.Errorf("unsupported self-heal source: %s", source)
 	}
