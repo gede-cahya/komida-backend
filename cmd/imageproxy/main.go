@@ -45,6 +45,7 @@ func main() {
 			os.Exit(1)
 		}
 		defer pool.Close()
+		app.SetDB(pool)
 		userRepo := user.NewRepository(pool)
 		manga.NewHandler(manga.NewRepository(pool), logger).Register(mux)
 		auth.NewHandler(userRepo, logger).Register(mux)
