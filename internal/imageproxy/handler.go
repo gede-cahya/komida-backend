@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strconv"
@@ -73,6 +74,16 @@ func (s *Server) Routes() http.Handler {
 func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/health", s.health)
 	mux.HandleFunc("/api/image/proxy", s.proxy)
+
+	target, _ := url.Parse("http://localhost:4000")
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = target.Scheme
+			req.URL.Host = target.Host
+			req.Host = target.Host
+		},
+	}
+	mux.Handle("/public/files/", proxy)
 }
 
 func (s *Server) StartCleanup(ctx context.Context) {
@@ -187,9 +198,12 @@ func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		if newURL, healErr := s.healMangaCover(r.Context(), originalURL); healErr == nil && newURL != "" {
+		newURL, healErr := s.healMangaCover(r.Context(), originalURL)
+		if healErr == nil && newURL != "" {
 			http.Redirect(w, r, "/api/image/proxy?url="+url.QueryEscape(newURL)+"&source="+source, http.StatusMovedPermanently)
 			return
+		} else if healErr != nil {
+			s.logger.Warn("self-heal cover failed", "url", originalURL, "error", healErr)
 		}
 		s.logger.Warn("image upstream returned non-ok", "url", rawURL, "status", resp.StatusCode)
 		s.writeStaleOrFallback(w, rawURL)

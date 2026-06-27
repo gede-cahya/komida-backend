@@ -15,7 +15,7 @@ var allowedOrigins = []string{
 var publicPaths = []string{
 	"/health", "/api/uploads", "/api/image/proxy",
 	"/api/trending", "/api/recent", "/api/popular",
-	"/api/genres", "/api/manga",
+	"/api/genres", "/api/manga", "/public/files",
 }
 
 func APIKeyGuard(next http.Handler) http.Handler {
