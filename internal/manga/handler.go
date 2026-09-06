@@ -28,18 +28,23 @@ func (h *Handler) Register(mux *http.ServeMux) {
 }
 
 func (h *Handler) trending(w http.ResponseWriter, r *http.Request) {
-	items, err := h.repo.Trending(r.Context())
+	page := intQuery(r, "page", 1)
+	limit := intQuery(r, "limit", 0)
+	items, err := h.repo.Trending(r.Context(), page, limit)
 	h.writeResult(w, items, err)
 }
 
 func (h *Handler) recent(w http.ResponseWriter, r *http.Request) {
-	items, err := h.repo.Recent(r.Context())
+	page := intQuery(r, "page", 1)
+	limit := intQuery(r, "limit", 0)
+	items, err := h.repo.Recent(r.Context(), page, limit)
 	h.writeResult(w, items, err)
 }
 
 func (h *Handler) popular(w http.ResponseWriter, r *http.Request) {
 	page := intQuery(r, "page", 1)
-	items, err := h.repo.Popular(r.Context(), page, 24)
+	limit := intQuery(r, "limit", 0)
+	items, err := h.repo.Popular(r.Context(), page, limit)
 	h.writeResult(w, items, err)
 }
 
@@ -49,7 +54,9 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"results": []SearchItem{}})
 		return
 	}
-	items, err := h.repo.Search(r.Context(), query)
+	page := intQuery(r, "page", 1)
+	limit := intQuery(r, "limit", 0)
+	items, err := h.repo.Search(r.Context(), query, page, limit)
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -91,7 +98,8 @@ func (h *Handler) genre(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := intQuery(r, "page", 1)
-	items, err := h.repo.ByGenre(r.Context(), genre, page, 24)
+	limit := intQuery(r, "limit", 0)
+	items, err := h.repo.ByGenre(r.Context(), genre, page, limit)
 	h.writeResult(w, items, err)
 }
 
@@ -113,7 +121,7 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=60, s-maxage=300")
+	w.Header().Set("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }

@@ -1595,9 +1595,17 @@ app.get('/api/trending', async (c) => {
         .orderBy(mangaTable.title, desc(mangaTable.last_updated))
         .as('sq');
 
+    const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1);
+    // Cap payload: Vercel bills Fast Origin Transfer on response size, and the
+    // homepage grid only renders the first 5 items anyway.
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '24') || 24));
+    const offset = (page - 1) * limit;
+
     const trending = await db.select()
         .from(subquery)
-        .orderBy(desc(subquery.last_updated));
+        .orderBy(desc(subquery.last_updated))
+        .limit(limit)
+        .offset(offset);
     return c.json(trending)
 })
 
@@ -1617,17 +1625,22 @@ app.get('/api/recent', async (c) => {
         .orderBy(mangaTable.title, desc(mangaTable.last_updated))
         .as('sq');
 
+    const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '10') || 10));
+    const offset = (page - 1) * limit;
+
     const recent = await db.select()
         .from(subquery)
         .orderBy(desc(subquery.last_updated))
-        .limit(10);
+        .limit(limit)
+        .offset(offset);
     return c.json(recent)
 })
 
 app.get('/api/popular', async (c) => {
     const refresh = c.req.query('refresh') === 'true';
-    const page = parseInt(c.req.query('page') || '1');
-    const limit = 24;
+    const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '24') || 24));
 
     let popular = await mangaService.getPopularManga(page, limit);
 
@@ -1753,7 +1766,10 @@ app.get('/api/manga/search', async (c) => {
     const query = c.req.query('q');
     if (!query) return c.json({ results: [] });
 
-    const results = await mangaService.searchManga(query);
+    // Cap payload: an unbounded ILIKE match returned ~2.7MB for a single letter.
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '24') || 24));
+
+    const results = await mangaService.searchManga(query, limit);
     return c.json({ results });
 });
 

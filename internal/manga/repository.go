@@ -19,7 +19,34 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool}
 }
 
-func (r *Repository) Trending(ctx context.Context) ([]ListItem, error) {
+// defaultLimit caps unbounded list endpoints (trending/search) so the payload
+// stays small. Vercel bills Fast Origin Transfer on response size, so these
+// endpoints must never stream the whole table.
+const (
+	defaultLimit = 24
+	maxLimit     = 100
+)
+
+func normalizeLimit(limit int) int {
+	if limit <= 0 {
+		return defaultLimit
+	}
+	if limit > maxLimit {
+		return maxLimit
+	}
+	return limit
+}
+
+func normalizeOffset(page, limit int) int {
+	if page < 1 {
+		page = 1
+	}
+	return (page - 1) * limit
+}
+
+func (r *Repository) Trending(ctx context.Context, page, limit int) ([]ListItem, error) {
+	limit = normalizeLimit(limit)
+	offset := normalizeOffset(page, limit)
 	return r.queryList(ctx, `
 		SELECT id, title, image, rating, chapter, type, span, is_trending, link, source,
 		       to_char(last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_updated
@@ -29,10 +56,16 @@ func (r *Repository) Trending(ctx context.Context) ([]ListItem, error) {
 			WHERE is_trending = true
 			ORDER BY title, last_updated DESC
 		) sq
-		ORDER BY last_updated DESC`)
+		ORDER BY last_updated DESC
+		LIMIT $1 OFFSET $2`, limit, offset)
 }
 
-func (r *Repository) Recent(ctx context.Context) ([]ListItem, error) {
+func (r *Repository) Recent(ctx context.Context, page, limit int) ([]ListItem, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	limit = normalizeLimit(limit)
+	offset := normalizeOffset(page, limit)
 	return r.queryList(ctx, `
 		SELECT id, title, image, rating, chapter, type, NULL::text AS span, NULL::boolean AS is_trending, link, source,
 		       to_char(last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_updated
@@ -42,17 +75,12 @@ func (r *Repository) Recent(ctx context.Context) ([]ListItem, error) {
 			ORDER BY title, last_updated DESC
 		) sq
 		ORDER BY last_updated DESC
-		LIMIT 10`)
+		LIMIT $1 OFFSET $2`, limit, offset)
 }
 
 func (r *Repository) Popular(ctx context.Context, page int, limit int) ([]ListItem, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 24
-	}
-	offset := (page - 1) * limit
+	limit = normalizeLimit(limit)
+	offset := normalizeOffset(page, limit)
 	return r.queryList(ctx, `
 		SELECT id, title, image, rating, chapter, type, span, NULL::boolean AS is_trending, link, source,
 		       to_char(last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_updated
@@ -66,14 +94,17 @@ func (r *Repository) Popular(ctx context.Context, page int, limit int) ([]ListIt
 		LIMIT $1 OFFSET $2`, limit, offset)
 }
 
-func (r *Repository) Search(ctx context.Context, query string) ([]SearchItem, error) {
+func (r *Repository) Search(ctx context.Context, query string, page, limit int) ([]SearchItem, error) {
+	limit = normalizeLimit(limit)
+	offset := normalizeOffset(page, limit)
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, title, image, rating, chapter, previous_chapter, type, span, is_trending, popularity,
 		       link, source, COALESCE(chapters, '[]'), COALESCE(genres, '[]'), synopsis, status, author,
 		       to_char(last_updated AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS last_updated
 		FROM manga
 		WHERE title ILIKE $1
-		ORDER BY title ASC, last_updated DESC`, "%"+query+"%")
+		ORDER BY title ASC, last_updated DESC
+		LIMIT $2 OFFSET $3`, "%"+query+"%", limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +213,8 @@ func (r *Repository) Genres(ctx context.Context) ([]string, error) {
 }
 
 func (r *Repository) ByGenre(ctx context.Context, genre string, page int, limit int) ([]SearchItem, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 24
-	}
-	offset := (page - 1) * limit
+	limit = normalizeLimit(limit)
+	offset := normalizeOffset(page, limit)
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, title, image, rating, chapter, previous_chapter, type, span, is_trending, popularity,
 		       link, source, COALESCE(chapters, '[]'), COALESCE(genres, '[]'), synopsis, status, author,

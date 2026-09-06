@@ -131,10 +131,11 @@ export class MangaService {
         return await scraper.scrapeDetail(link);
     }
 
-    async searchManga(query: string) {
+    async searchManga(query: string, limit: number = 24) {
         const results = await db.select()
             .from(mangaTable)
-            .where(ilike(mangaTable.title, `%${query}%`));
+            .where(ilike(mangaTable.title, `%${query}%`))
+            .limit(limit);
 
         if (results.length > 0) {
             const uniqueResults = [];
