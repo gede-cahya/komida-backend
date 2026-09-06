@@ -34,6 +34,19 @@ jobs:
               pm2 start bun --name komida-backend -- run src/index.ts
             fi
 
+            echo "🏗️  Rebuilding Go binary (imageproxy)..."
+            export PATH="$PATH:/usr/local/go/bin:/usr/lib/go/bin:$HOME/go/bin"
+            if command -v go >/dev/null 2>&1; then
+              go build -o imageproxy ./cmd/imageproxy || echo "❌ go build failed"
+              if pm2 list | grep -q "imageproxy"; then
+                pm2 restart imageproxy
+              else
+                pm2 start ./imageproxy --name imageproxy
+              fi
+            else
+              echo "⚠️  Go not installed on VPS - imageproxy NOT rebuilt"
+            fi
+
             sleep 5
             HEALTH=$(curl -s http://localhost:3481/health)
             if echo "$HEALTH" | grep -q '"status":"ok"'; then
